@@ -1,0 +1,243 @@
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Malgun Gothic', 'Segoe UI', sans-serif;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 15px;
+  padding-top: calc(15px + env(safe-area-inset-top));
+  padding-bottom: calc(15px + env(safe-area-inset-bottom));
+  background-color: #121212;
+  color: #e0e0e0;
+  min-height: 100vh;
+}
+
+.input-box {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 15px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+input {
+  padding: 8px;
+  border: 1px solid #333333;
+  border-radius: 4px;
+  font-size: 14px; /* 모바일에서 자동 확대 방지를 위해 16px 미만이면 iOS는 확대됨 - 안드로이드는 14px로 충분 */
+  background-color: #1e1e1e;
+  color: #ffffff;
+}
+
+input::placeholder { color: #777777; }
+input:focus { outline: none; border-color: #007bff; }
+
+#tickerInput { width: 90px; text-transform: uppercase; }
+#fairValueInput { width: 100px; }
+
+button {
+  padding: 10px 12px; /* 터치 타깃 확대 */
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+#addStockBtn { background-color: #0d6efd; }
+#addStockBtn:hover { background-color: #0b5ed7; }
+#editSelectedBtn { background-color: #ffc107; color: #121212; }
+#editSelectedBtn:hover { background-color: #ffca2c; }
+#deleteSelectedBtn { background-color: #dc3545; }
+#deleteSelectedBtn:hover { background-color: #bb2d3b; }
+#refreshBtn { background-color: #198754; margin-left: auto; }
+#refreshBtn:hover { background-color: #157347; }
+
+/* 화면이 좁으면 표를 가로 스크롤 (열이 찌그러지는 것보다 나음) */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  margin-top: 10px;
+  table-layout: fixed;
+  background-color: #1e1e1e;
+  font-size: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+th, td {
+  padding: 10px 4px;
+  text-align: center;
+  border-bottom: 1px solid #2d2d2d;
+  background-color: #1e1e1e;
+  color: #e0e0e0;
+}
+
+th {
+  background-color: #252525;
+  color: #aaaaaa;
+  font-weight: bold;
+}
+
+/* 7개 컬럼 너비 비율 제어 */
+th:nth-child(1) { width: 12%; }
+th:nth-child(2) { width: 14%; }
+th:nth-child(3) { width: 17%; }
+th:nth-child(4) { width: 16%; }
+th:nth-child(5) { width: 12%; }
+th:nth-child(6) { width: 14%; }
+th:nth-child(7) { width: 15%; }
+
+/* --- 순서 변경: 위/아래 버튼 --- */
+.row-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.reorder-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.move-up-btn, .move-down-btn {
+  padding: 2px 6px;
+  font-size: 10px;
+  line-height: 1;
+  background-color: #333333;
+  color: #cccccc;
+  min-width: 22px;
+}
+
+.move-up-btn:hover:not(:disabled), .move-down-btn:hover:not(:disabled) {
+  background-color: #444444;
+  color: #ffffff;
+}
+
+.move-up-btn:disabled, .move-down-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* 데이터 피드 스타일 */
+.current-price-val { font-weight: bold; color: #ffffff; }
+.price-change-percent { font-size: 11px; display: inline-block; margin-top: 3px; }
+.change-up { color: #ff6b6b; font-weight: bold; }
+.change-down { color: #4dadff; font-weight: bold; }
+.change-flat { color: #999999; }
+
+.price-buy-zone { background-color: #3e3518 !important; color: #ffd740 !important; }
+.price-buy-zone .change-up { color: #ff8b8b; }
+.price-buy-zone .change-down { color: #6cbdff; }
+.price-high-zone { color: #ff6b6b !important; font-weight: bold !important; }
+
+.rsi-high { background-color: #441d1d !important; color: #ff8a80 !important; }
+.rsi-low { background-color: #1a237e !important; color: #82b1ff !important; }
+.sma-buy-zone { background-color: #1b3a24 !important; color: #69f0ae !important; }
+
+.edit-fair-input {
+  width: 65px;
+  text-align: center;
+  padding: 4px;
+  border: 1px solid #444444;
+  border-radius: 4px;
+  background-color: #2d2d2d;
+  color: #ffffff;
+}
+
+.edit-fair-input:not(:disabled) {
+  background-color: #1e1e1e;
+  border: 2px solid #ffc107;
+}
+
+#helpBtn { background-color: #6c757d; padding: 10px 12px; }
+#helpBtn:hover { background-color: #5a6268; }
+
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+.modal-content {
+  background-color: #252525;
+  margin: 15% auto;
+  padding: 20px;
+  border: 1px solid #444;
+  border-radius: 8px;
+  width: 88%;
+  max-width: 480px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  position: relative;
+}
+
+.close-btn {
+  color: #aaa;
+  position: absolute;
+  top: 10px; right: 15px;
+  font-size: 24px; font-weight: bold;
+  cursor: pointer;
+  padding: 4px 8px; /* 터치 타깃 확대 */
+}
+.close-btn:hover { color: #fff; }
+
+.help-body { font-size: 12px; line-height: 1.6; color: #dcdcdc; margin-top: 10px; }
+
+/* --- 도움말 섹션 공통 스타일 --- */
+.help-section { border-left: 3px solid; padding-left: 10px; margin-bottom: 20px; }
+.help-section-blue { border-color: #0d6efd; }
+.help-section-green { border-color: #198754; margin-bottom: 25px; }
+
+.help-section-title { margin: 0 0 8px 0; }
+.help-section-title-blue { color: #54a0ff; }
+.help-section-title-green { color: #5cf2bd; }
+
+.help-section-desc { margin: 0 0 8px 0; color: #aaa; }
+
+.help-quote {
+  margin: 5px 0;
+  padding: 6px 10px;
+  background: #2d2d2d;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #bbb;
+}
+
+.help-rulebox { margin-top: 8px; padding: 10px; border-radius: 6px; }
+.help-rulebox-blue { background: #1a1e24; }
+.help-rulebox-green { background: #19221b; }
+
+.help-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  background: #198754;
+  color: #fff;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.help-rule { margin: 4px 0; }
+.text-buy { color: #69f0ae; }
+.text-full-buy { color: #82b1ff; }
+.text-sell { color: #ff8a80; }
+
+.help-divider { border: 0; border-top: 1px dashed #444; margin: 20px 0; }

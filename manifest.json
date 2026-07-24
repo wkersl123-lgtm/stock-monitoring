@@ -1,0 +1,17 @@
+{
+  "name": "매일 지켜볼게 - 미국주식 모니터",
+  "short_name": "지켜볼게",
+  "description": "야후 파이낸스 데이터로 주가, RSI, 200일선, 실적발표일을 추적합니다",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#121212",
+  "orientation": "portrait",
+  "lang": "ko",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

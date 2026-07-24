@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#121212">
+  <meta name="description" content="야후 파이낸스 데이터로 주가, RSI, 200일선, 실적발표일을 추적합니다">
+
+  <title>매일 지켜볼게 - 미국주식 모니터</title>
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="지켜볼게">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="input-box">
+    <input type="text" id="tickerInput" placeholder="티커">
+    <input type="text" id="fairValueInput" placeholder="적정가 ($)" step="0.01">
+    <button id="addStockBtn">추가</button>
+    <button id="editSelectedBtn">수정</button>
+    <button id="deleteSelectedBtn">삭제</button>
+    <button id="helpBtn">?</button>
+    <button id="refreshBtn">갱신</button>
+  </div>
+
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th><input type="checkbox" id="selectAllCheckbox"></th>
+          <th>티커</th>
+          <th>적정가</th>
+          <th>현재가</th>
+          <th>RSI(14)</th>
+          <th>200일선</th>
+          <th>실적발표일</th>
+        </tr>
+      </thead>
+      <tbody id="stockTableBody"></tbody>
+    </table>
+  </div>
+
+  <div id="helpModal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn">&times;</span>
+      <h3>💡 도움말</h3>
+      <div class="help-body">
+        <div class="help-section help-section-blue">
+          <h4 class="help-section-title help-section-title-blue">📌 추천 기준 1. [정량적 접근] RSI 지표 결합</h4>
+          <p class="help-section-desc">수식으로 구한 적정주가는 가치의 기준선으로 두고, 매매 타이밍은 기술적 과열 지표인 RSI를 기계적으로 결합하는 방법입니다.</p>
+          <blockquote class="help-quote">
+            <b>ℹ️ RSI 지표란?</b> 70 이상이면 <b>과열</b>(너도나도 삼), 30 이하이면 <b>침체</b>(공포에 질려 던짐)를 뜻합니다.
+          </blockquote>
+          <div class="help-rulebox help-rulebox-blue">
+            <span class="help-badge">🛒 매매 규칙</span>
+            <p class="help-rule"><b class="text-buy">• 분할 매수:</b> 주가 &lt; 적정주가 <b>AND</b> RSI 40 이하일 때 기계적 분할 매수</p>
+            <p class="help-rule"><b class="text-full-buy">• 풀매수:</b> 주가 &lt; 적정주가 <b>AND</b> RSI 30 이하(과매도)로 처박힐 때 풀매수</p>
+            <p class="help-rule"><b class="text-sell">• 매도 시점:</b> 주가 &gt; 적정주가 <b>AND</b> RSI 70 이상(과열)일 때 분할 매도 시작</p>
+          </div>
+        </div>
+
+        <hr class="help-divider">
+
+        <div class="help-section help-section-green">
+          <h4 class="help-section-title help-section-title-green">📌 추천 기준 2. [추세적 접근] 주요 이동평균선 결합</h4>
+          <p class="help-section-desc">거대 자금들이 가장 중요하게 보는 기준선인 120일 이평선(6개월 평균)과 200일 이평선(1년 평균)을 기준으로 삼는 방법입니다.</p>
+          <div class="help-rulebox help-rulebox-green">
+            <span class="help-badge">🛒 매매 규칙</span>
+            <p class="help-rule"><b class="text-buy">• 분할 매수:</b> 주가 &lt; 적정주가 아래에 있고, <b>120일 이평선</b> 근처까지 내려왔을 때 1차 매수</p>
+            <p class="help-rule"><b class="text-buy">• 풀매수:</b> 주가 &lt; 적정주가 아래에 있고, 강력한 지지선인 <b>200일 이평선</b> 터치 또는 하회 시 기계적 풀매수</p>
+            <p class="help-rule"><b class="text-sell">• 매도 시점:</b> 주가 &gt; 적정주가 위에 있으면서, <b>5일 또는 20일 이평선</b>을 아래로 깨고 내려갈 때 익절</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
