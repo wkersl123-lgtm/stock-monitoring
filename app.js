@@ -1,4 +1,4 @@
-const WORKER_BASE_URL = 'https://stock-monitor-proxy.wkersl123.workers.dev';
+const WORKER_BASE_URL = 'https://stock-monitoring.wkersl123.workers.dev
 
 document.addEventListener('DOMContentLoaded', () => {
   const el = {
