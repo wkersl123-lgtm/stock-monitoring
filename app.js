@@ -1,4 +1,6 @@
-const WORKER_BASE_URL = 'https://stock-monitoring.wkersl123.workers.dev';
+// ⚠️ Cloudflare Worker 배포 후 아래 주소를 실제 Worker 주소로 교체하세요.
+// 예: https://stock-monitor-proxy.your-subdomain.workers.dev
+const WORKER_BASE_URL = 'https://YOUR-WORKER-SUBDOMAIN.workers.dev';
 
 document.addEventListener('DOMContentLoaded', () => {
   const el = {
