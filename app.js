@@ -125,7 +125,66 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 7. 테이블 렌더링 및 순서 변경(위/아래 버튼)
+  // 6-3. 터치/마우스 드래그로 순서 변경 (Pointer Events - 터치/마우스/펜을 동일하게 처리하므로
+  // 안드로이드 터치에서도 확실하게 동작함. 예전 HTML5 draggable 방식은 모바일 브라우저에서
+  // 기본 지원되지 않아 동작하지 않았음)
+  let dragState = null; // { startIndex, currentIndex, pointerId }
+
+  if (el.stockTableBody) {
+    el.stockTableBody.addEventListener('pointerdown', (e) => {
+      const handle = e.target.closest('.drag-icon');
+      if (!handle) return;
+      e.preventDefault();
+
+      const row = handle.closest('tr');
+      const startIndex = parseInt(handle.getAttribute('data-index'));
+      dragState = { startIndex, currentIndex: startIndex, pointerId: e.pointerId };
+      row.classList.add('dragging');
+      try { handle.setPointerCapture(e.pointerId); } catch (err) { /* 일부 브라우저는 미지원 - 무시 */ }
+    });
+
+    el.stockTableBody.addEventListener('pointermove', (e) => {
+      if (!dragState || e.pointerId !== dragState.pointerId) return;
+      e.preventDefault();
+
+      document.querySelectorAll('#stockTableBody tr').forEach(r => r.classList.remove('drag-over'));
+
+      const rows = Array.from(el.stockTableBody.querySelectorAll('tr'));
+      for (const r of rows) {
+        const rect = r.getBoundingClientRect();
+        if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
+          dragState.currentIndex = parseInt(r.getAttribute('data-index'));
+          r.classList.add('drag-over');
+          break;
+        }
+      }
+    });
+
+    const finishDrag = () => {
+      if (!dragState) return;
+      const { startIndex, currentIndex } = dragState;
+      document.querySelectorAll('#stockTableBody tr').forEach(r => r.classList.remove('dragging', 'drag-over'));
+      dragState = null;
+
+      if (startIndex !== currentIndex) {
+        const movedItem = stocks.splice(startIndex, 1)[0];
+        stocks.splice(currentIndex, 0, movedItem);
+        saveStocks(() => renderTable());
+      }
+    };
+
+    el.stockTableBody.addEventListener('pointerup', (e) => {
+      if (!dragState || e.pointerId !== dragState.pointerId) return;
+      finishDrag();
+    });
+
+    el.stockTableBody.addEventListener('pointercancel', () => {
+      document.querySelectorAll('#stockTableBody tr').forEach(r => r.classList.remove('dragging', 'drag-over'));
+      dragState = null;
+    });
+  }
+
+  // 7. 테이블 렌더링 (순서 변경은 위 Pointer Events 드래그 앤 드롭으로 처리)
   function renderTable() {
     if (!el.stockTableBody) return;
     el.stockTableBody.innerHTML = '';
@@ -144,17 +203,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const row = document.createElement('tr');
       row.setAttribute('data-index', index);
 
-      const isFirst = index === 0;
-      const isLast = index === stocks.length - 1;
-
       row.innerHTML = `
         <td class="drag-handle">
           <div class="row-controls">
             <input type="checkbox" class="row-checkbox" data-index="${index}">
-            <div class="reorder-btns">
-              <button type="button" class="move-up-btn" data-index="${index}" aria-label="위로 이동" ${isFirst ? 'disabled' : ''}>▲</button>
-              <button type="button" class="move-down-btn" data-index="${index}" aria-label="아래로 이동" ${isLast ? 'disabled' : ''}>▼</button>
-            </div>
+            <span class="drag-icon" data-index="${index}" aria-label="순서 변경(드래그)">⠿</span>
           </div>
         </td>
         <td><strong>${stock.ticker}</strong></td>
@@ -166,18 +219,6 @@ document.addEventListener('DOMContentLoaded', () => {
         <td class="cell-sma">로딩중...</td>
         <td class="cell-earnings">로딩중...</td>
       `;
-
-      row.querySelector('.move-up-btn').addEventListener('click', () => {
-        if (index === 0) return;
-        [stocks[index - 1], stocks[index]] = [stocks[index], stocks[index - 1]];
-        saveStocks(() => renderTable());
-      });
-
-      row.querySelector('.move-down-btn').addEventListener('click', () => {
-        if (index === stocks.length - 1) return;
-        [stocks[index], stocks[index + 1]] = [stocks[index + 1], stocks[index]];
-        saveStocks(() => renderTable());
-      });
 
       domCache[stock.ticker] = {
         price: row.querySelector('.cell-price'),
