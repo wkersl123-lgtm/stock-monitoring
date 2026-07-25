@@ -387,6 +387,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (timestamp) {
         let earnDate = new Date(timestamp * 1000);
+
+        // 미국 날짜 기준으로 오는 값이라 한국 날짜와 하루 어긋남 - 보정
+        earnDate.setDate(earnDate.getDate() + 1);
+
         const now = new Date();
 
         // 실적발표가 이미 끝났다면 다음 분기(3개월 뒤) 일정으로 자동 업데이트
