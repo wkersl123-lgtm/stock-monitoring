@@ -97,38 +97,28 @@ th:nth-child(5) { width: 12%; }
 th:nth-child(6) { width: 14%; }
 th:nth-child(7) { width: 15%; }
 
-/* --- 순서 변경: 위/아래 버튼 --- */
+/* --- 순서 변경: 터치/마우스 드래그 앤 드롭 --- */
 .row-controls {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
-.reorder-btns {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.move-up-btn, .move-down-btn {
-  padding: 2px 6px;
-  font-size: 10px;
+.drag-icon {
+  font-size: 18px;
+  color: #888888;
+  cursor: grab;
+  padding: 4px 8px; /* 터치 타깃 확대 */
+  touch-action: none; /* 드래그 중 브라우저 기본 스크롤 제스처와 충돌 방지 */
+  user-select: none;
   line-height: 1;
-  background-color: #333333;
-  color: #cccccc;
-  min-width: 22px;
 }
 
-.move-up-btn:hover:not(:disabled), .move-down-btn:hover:not(:disabled) {
-  background-color: #444444;
-  color: #ffffff;
-}
+.drag-icon:active { cursor: grabbing; color: #ffffff; }
 
-.move-up-btn:disabled, .move-down-btn:disabled {
-  opacity: 0.3;
-  cursor: default;
-}
+tr.dragging { opacity: 0.4; background-color: #333333; }
+tr.drag-over { border-top: 2px solid #0d6efd; }
 
 /* 데이터 피드 스타일 */
 .current-price-val { font-weight: bold; color: #ffffff; }
