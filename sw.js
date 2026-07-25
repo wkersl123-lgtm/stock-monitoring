@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stock-monitor-v1';
+const CACHE_NAME = 'stock-monitor-v2'; // 버전 올릴 때마다 이 값을 바꾸면 이전 캐시가 자동 폐기됨
 const APP_SHELL = [
   './',
   './index.html',
@@ -41,8 +41,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 앱 셸(HTML/CSS/JS)은 캐시 우선, 없으면 네트워크
+  // 앱 셸(HTML/CSS/JS)은 네트워크 우선 - 최신 배포본을 항상 먼저 시도하고,
+  // 오프라인일 때만 캐시된 이전 버전으로 대체 (개발 중 자주 바뀌는 파일에 적합)
   event.respondWith(
-    caches.match(request).then((cached) => cached || fetch(request))
+    fetch(request)
+      .then((networkRes) => {
+        const resClone = networkRes.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, resClone));
+        return networkRes;
+      })
+      .catch(() => caches.match(request))
   );
 });
