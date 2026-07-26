@@ -155,7 +155,7 @@ button:active { transform: scale(0.96); }
 }
 
 .board {
-  min-width: 460px;
+  min-width: 520px;
   font-family: 'IBM Plex Mono', monospace;
   background: #0a0a0a;
   border-radius: 10px;
@@ -164,7 +164,8 @@ button:active { transform: scale(0.96); }
 
 .board-header, .board-row {
   display: grid;
-  grid-template-columns: 34px 58px 60px 70px 46px 62px 66px;
+  grid-template-columns: 34px 64px 62px 84px 48px 70px 82px;
+  gap: 6px;
   align-items: center;
 }
 
