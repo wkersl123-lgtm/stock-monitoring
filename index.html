@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#12151a">
+  <meta name="theme-color" content="#0a0a0a">
   <meta name="description" content="야후 파이낸스 데이터로 주가, RSI, 200일선, 실적발표일을 추적합니다">
 
   <title>매일 지켜볼게 - 미국주식 모니터</title>
@@ -49,7 +49,20 @@
     <span class="list-count" id="listCount"></span>
   </div>
 
-  <div id="stockTableBody" class="stock-list"></div>
+  <div class="board-wrap">
+    <div class="board">
+      <div class="board-header">
+        <span class="board-col-ctrl"></span>
+        <span>티커</span>
+        <span>적정</span>
+        <span>현재</span>
+        <span>RSI</span>
+        <span>200D</span>
+        <span>실적일</span>
+      </div>
+      <div id="stockTableBody" class="board-body"></div>
+    </div>
+  </div>
 
   <div id="helpModal" class="modal">
     <div class="modal-content">
