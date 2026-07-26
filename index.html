@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#121212">
+  <meta name="theme-color" content="#12151a">
   <meta name="description" content="야후 파이낸스 데이터로 주가, RSI, 200일선, 실적발표일을 추적합니다">
 
   <title>매일 지켜볼게 - 미국주식 모니터</title>
@@ -11,13 +11,25 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="지켜볼게">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+  <header class="app-header">
+    <div class="app-header-text">
+      <h1 class="app-title">매일 지켜볼게</h1>
+      <p class="app-subtitle">미국주식 모니터</p>
+    </div>
+    <span class="live-dot" aria-hidden="true"></span>
+  </header>
 
   <div class="input-box">
     <input type="text" id="tickerInput" placeholder="티커">
@@ -29,22 +41,15 @@
     <button id="refreshBtn">갱신</button>
   </div>
 
-  <div class="table-scroll">
-    <table>
-      <thead>
-        <tr>
-          <th><input type="checkbox" id="selectAllCheckbox"></th>
-          <th>티커</th>
-          <th>적정가</th>
-          <th>현재가</th>
-          <th>RSI(14)</th>
-          <th>200일선</th>
-          <th>실적발표일</th>
-        </tr>
-      </thead>
-      <tbody id="stockTableBody"></tbody>
-    </table>
+  <div class="list-toolbar">
+    <label class="select-all-label">
+      <input type="checkbox" id="selectAllCheckbox">
+      전체 선택
+    </label>
+    <span class="list-count" id="listCount"></span>
   </div>
+
+  <div id="stockTableBody" class="stock-list"></div>
 
   <div id="helpModal" class="modal">
     <div class="modal-content">
