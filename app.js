@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!handle) return;
       e.preventDefault();
 
-      const row = handle.closest('tr');
+      const row = handle.closest('.stock-card');
       const startIndex = parseInt(handle.getAttribute('data-index'));
       dragState = { startIndex, currentIndex: startIndex, pointerId: e.pointerId };
       row.classList.add('dragging');
@@ -147,9 +147,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!dragState || e.pointerId !== dragState.pointerId) return;
       e.preventDefault();
 
-      document.querySelectorAll('#stockTableBody tr').forEach(r => r.classList.remove('drag-over'));
+      document.querySelectorAll('.stock-card').forEach(r => r.classList.remove('drag-over'));
 
-      const rows = Array.from(el.stockTableBody.querySelectorAll('tr'));
+      const rows = Array.from(el.stockTableBody.querySelectorAll('.stock-card'));
       for (const r of rows) {
         const rect = r.getBoundingClientRect();
         if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
@@ -163,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const finishDrag = () => {
       if (!dragState) return;
       const { startIndex, currentIndex } = dragState;
-      document.querySelectorAll('#stockTableBody tr').forEach(r => r.classList.remove('dragging', 'drag-over'));
+      document.querySelectorAll('.stock-card').forEach(r => r.classList.remove('dragging', 'drag-over'));
       dragState = null;
 
       if (startIndex !== currentIndex) {
@@ -179,12 +179,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     el.stockTableBody.addEventListener('pointercancel', () => {
-      document.querySelectorAll('#stockTableBody tr').forEach(r => r.classList.remove('dragging', 'drag-over'));
+      document.querySelectorAll('.stock-card').forEach(r => r.classList.remove('dragging', 'drag-over'));
       dragState = null;
     });
   }
 
-  // 7. 테이블 렌더링 (순서 변경은 위 Pointer Events 드래그 앤 드롭으로 처리)
+  // 7. 카드 리스트 렌더링 (순서 변경은 위 Pointer Events 드래그 앤 드롭으로 처리)
   function renderTable() {
     if (!el.stockTableBody) return;
     el.stockTableBody.innerHTML = '';
@@ -195,39 +195,61 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     for (const key in domCache) delete domCache[key];
+
+    const listCount = document.getElementById('listCount');
+    if (listCount) listCount.innerText = stocks.length > 0 ? `${stocks.length}개 종목` : '';
+
     if (stocks.length === 0) return;
 
     const fragment = document.createDocumentFragment();
 
     stocks.forEach((stock, index) => {
-      const row = document.createElement('tr');
-      row.setAttribute('data-index', index);
+      const card = document.createElement('div');
+      card.className = 'stock-card';
+      card.setAttribute('data-index', index);
 
-      row.innerHTML = `
-        <td class="drag-handle">
-          <div class="row-controls">
-            <input type="checkbox" class="row-checkbox" data-index="${index}">
-            <span class="drag-icon" data-index="${index}" aria-label="순서 변경(드래그)">⠿</span>
+      card.innerHTML = `
+        <div class="stock-card-header">
+          <input type="checkbox" class="row-checkbox" data-index="${index}">
+          <span class="stock-ticker">${stock.ticker}</span>
+          <span class="drag-icon" data-index="${index}" aria-label="순서 변경(드래그)">⠿</span>
+        </div>
+        <div class="stock-card-grid">
+          <div class="stat-tile">
+            <span class="stat-label">적정가</span>
+            <div class="fairvalue-row">
+              <span class="currency-sign">$</span>
+              <input type="text" class="edit-fair-input" data-index="${index}" value="${stock.fairValue.toFixed(2)}" inputmode="decimal" disabled>
+            </div>
           </div>
-        </td>
-        <td><strong>${stock.ticker}</strong></td>
-        <td>
-          <input type="text" class="edit-fair-input" data-index="${index}" value="${stock.fairValue.toFixed(2)}" inputmode="decimal" disabled>
-        </td>
-        <td class="cell-price">로딩중...</td>
-        <td class="cell-rsi">로딩중...</td>
-        <td class="cell-sma">로딩중...</td>
-        <td class="cell-earnings">로딩중...</td>
+          <div class="stat-tile">
+            <span class="stat-label">현재가</span>
+            <div class="stat-value cell-price">로딩중...</div>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-label">RSI(14)</span>
+            <div class="stat-value cell-rsi">로딩중...</div>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-label">200일선</span>
+            <div class="stat-value cell-sma">로딩중...</div>
+          </div>
+          <div class="stat-tile full-width">
+            <span class="stat-label">실적발표일</span>
+            <div class="stat-value cell-earnings">로딩중...</div>
+          </div>
+        </div>
       `;
 
       domCache[stock.ticker] = {
-        price: row.querySelector('.cell-price'),
-        rsi: row.querySelector('.cell-rsi'),
-        sma: row.querySelector('.cell-sma'),
-        earnings: row.querySelector('.cell-earnings')
+        card: card,
+        price: card.querySelector('.cell-price'),
+        rsi: card.querySelector('.cell-rsi'),
+        sma: card.querySelector('.cell-sma'),
+        earnings: card.querySelector('.cell-earnings')
       };
 
-      fragment.appendChild(row);
+      fragment.appendChild(card);
     });
 
     el.stockTableBody.appendChild(fragment);
@@ -276,9 +298,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const rawCloses = result?.indicators?.quote?.[0]?.close;
 
       if (!result || !rawCloses) {
-        cache.price.innerText = '오류'; cache.price.className = '';
-        cache.rsi.innerText = '-'; cache.rsi.className = ''; cache.rsi.title = '';
-        cache.sma.innerText = '-'; cache.sma.className = ''; cache.sma.title = '';
+        cache.price.innerText = '오류'; cache.price.className = 'stat-value cell-price';
+        cache.rsi.innerText = '-'; cache.rsi.className = 'stat-value cell-rsi'; cache.rsi.title = '';
+        cache.sma.innerText = '-'; cache.sma.className = 'stat-value cell-sma'; cache.sma.title = '';
       } else {
         const prices = rawCloses.filter(p => p !== null);
         const meta = result.meta;
@@ -315,13 +337,13 @@ document.addEventListener('DOMContentLoaded', () => {
           const targetStock = stocks.find(s => s.ticker === ticker);
           if (targetStock) {
             if (currentPrice < targetStock.fairValue) {
-              cache.price.className = 'price-buy-zone';
+              cache.price.className = 'stat-value cell-price price-buy-zone';
               cache.price.title = `현재가가 적정가($${targetStock.fairValue.toFixed(2)})보다 낮습니다! (저평가 구간)`;
             } else if (currentPrice > targetStock.fairValue) {
-              cache.price.className = 'price-high-zone';
+              cache.price.className = 'stat-value cell-price price-high-zone';
               cache.price.title = `현재가가 적정가($${targetStock.fairValue.toFixed(2)})보다 높습니다.`;
             } else {
-              cache.price.className = '';
+              cache.price.className = 'stat-value cell-price';
               cache.price.title = "현재가가 적정가와 일치합니다.";
             }
           }
@@ -334,13 +356,13 @@ document.addEventListener('DOMContentLoaded', () => {
           cache.rsi.innerText = rsiValue.toFixed(2);
 
           if (rsiValue <= 30) {
-            cache.rsi.className = 'rsi-low';
+            cache.rsi.className = 'stat-value cell-rsi rsi-low';
             cache.rsi.title = "RSI가 30 이하입니다! 침체 구간 (과매도 매수 신호)";
           } else if (rsiValue >= 70) {
-            cache.rsi.className = 'rsi-high';
+            cache.rsi.className = 'stat-value cell-rsi rsi-high';
             cache.rsi.title = "RSI가 70 이상입니다! 과열 구간 (과매수 경계 신호)";
           } else {
-            cache.rsi.className = '';
+            cache.rsi.className = 'stat-value cell-rsi';
             cache.rsi.title = "안정적인 중간 흐름 구간입니다.";
           }
         } else {
@@ -354,10 +376,10 @@ document.addEventListener('DOMContentLoaded', () => {
           cache.sma.innerText = `$${sma200.toFixed(2)}`;
 
           if (currentPrice && currentPrice <= sma200) {
-            cache.sma.className = 'sma-buy-zone';
+            cache.sma.className = 'stat-value cell-sma sma-buy-zone';
             cache.sma.title = "현재가가 200일 이동평균선 이하입니다! (장기 매수구간)";
           } else {
-            cache.sma.className = '';
+            cache.sma.className = 'stat-value cell-sma';
             cache.sma.title = "현재가가 200일선 위에 있습니다.";
           }
         } else {
