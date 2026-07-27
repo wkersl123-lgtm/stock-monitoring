@@ -383,7 +383,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // 실적발표일: Worker의 /earnings 엔드포인트 호출 (crumb/쿠키 인증은 Worker가 서버 사이드에서 처리)
-  async function fetchEarningsFromWorker(ticker, cache) {
+  // Finnhub 무료 티어의 일시적인 지연/오류로 간헐적으로 실패할 수 있어 1회 재시도하고,
+  // 그래도 실패하면 이전에 이미 확인된 정상 날짜가 있는 경우 덮어쓰지 않고 그대로 유지함
+  async function fetchEarningsFromWorker(ticker, cache, isRetry = false) {
     try {
       const res = await fetch(`${WORKER_BASE_URL}/earnings?ticker=${encodeURIComponent(ticker)}&_=${Date.now()}`, { cache: 'no-store' });
       const data = await res.json();
@@ -408,13 +410,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
         cache.earnings.innerText = `${year}-${month}-${day}`;
         cache.earnings.title = '';
-      } else {
+        return;
+      }
+
+      if (!isRetry) {
+        // 일시적인 오류일 수 있으니 잠깐 대기 후 한 번만 재시도
+        await new Promise(r => setTimeout(r, 700));
+        return fetchEarningsFromWorker(ticker, cache, true);
+      }
+
+      // 재시도까지 실패한 경우: 이미 정상 날짜가 표시되어 있었다면 그대로 유지 (깜빡임/후퇴 방지)
+      const alreadyValid = /^\d{4}-\d{2}-\d{2}$/.test(cache.earnings.innerText);
+      if (!alreadyValid) {
         cache.earnings.innerText = '미정';
         cache.earnings.title = 'Worker에서 실적발표일 데이터를 가져오지 못했습니다.';
       }
     } catch (e) {
-      cache.earnings.innerText = '미정';
-      cache.earnings.title = 'Worker 연결에 실패했습니다.';
+      const alreadyValid = /^\d{4}-\d{2}-\d{2}$/.test(cache.earnings.innerText);
+      if (!alreadyValid) {
+        cache.earnings.innerText = '미정';
+        cache.earnings.title = 'Worker 연결에 실패했습니다.';
+      }
     }
   }
 
