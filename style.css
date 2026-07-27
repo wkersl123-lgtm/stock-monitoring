@@ -270,8 +270,6 @@ button:active { transform: scale(0.96); }
 .change-flat { color: var(--text-faint); }
 
 .price-buy-zone.stat-value, .price-buy-zone .current-price-val { color: var(--amber) !important; }
-.price-buy-zone .change-up { color: #ffcf70; }
-.price-buy-zone .change-down { color: #7fb2ff; }
 .price-high-zone.stat-value, .price-high-zone .current-price-val { color: var(--red) !important; }
 
 .rsi-high.stat-value { color: var(--red) !important; }
