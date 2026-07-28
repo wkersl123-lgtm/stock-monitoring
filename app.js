@@ -385,54 +385,54 @@ document.addEventListener('DOMContentLoaded', () => {
   // 실적발표일: Worker의 /earnings 엔드포인트 호출 (crumb/쿠키 인증은 Worker가 서버 사이드에서 처리)
   // Finnhub 무료 티어의 일시적인 지연/오류로 간헐적으로 실패할 수 있어 1회 재시도하고,
   // 그래도 실패하면 이전에 이미 확인된 정상 날짜가 있는 경우 덮어쓰지 않고 그대로 유지함
-  async function fetchEarningsFromWorker(ticker, cache, isRetry = false) {
-    try {
-      const res = await fetch(`${WORKER_BASE_URL}/earnings?ticker=${encodeURIComponent(ticker)}&_=${Date.now()}`, { cache: 'no-store' });
-      const data = await res.json();
-      const timestamp = typeof data?.timestamp === 'number' ? data.timestamp : null;
+// 실적발표일: Worker의 /earnings 엔드포인트 호출 (crumb/쿠키 인증은 Worker가 서버 사이드에서 처리)
+// Finnhub 무료 티어의 일시적인 지연/오류로 간헐적으로 실패할 수 있어 1회 재시도하고,
+// 그래도 실패하면 이전에 이미 확인된 정상 날짜가 있는 경우 덮어쓰지 않고 그대로 유지함
+async function fetchEarningsFromWorker(ticker, cache, isRetry = false) {
+  try {
+    const res = await fetch(`${WORKER_BASE_URL}/earnings?ticker=${encodeURIComponent(ticker)}&_=${Date.now()}`, { cache: 'no-store' });
+    
+    // HTTP 응답 실패 시 예외를 던져 catch/재시도 로직으로 이동
+    if (!res.ok) {
+      throw new Error(`HTTP error! status: ${res.status}`);
+    }
 
-      if (timestamp) {
-        let earnDate = new Date(timestamp * 1000);
+    const data = await res.json();
 
-        // 미국 날짜 기준으로 오는 값이라 한국 날짜와 하루 어긋남 - 보정
-        earnDate.setDate(earnDate.getDate() + 1);
+    if (data && data.year && data.month && data.day) {
+      const { year, month, day } = data;
+      cache.earnings.innerText = `${year}-${month}-${day}`;
+      cache.earnings.title = '';
+      return; // 정상 처리 완료 후 종료
+    }
 
-        const now = new Date();
+    // 데이터가 유효하지 않은 경우: 재시도 조건 체크
+    if (!isRetry) {
+      // 일시적인 오류일 수 있으니 잠깐 대기 후 한 번만 재시도
+      await new Promise(r => setTimeout(r, 700));
+      return await fetchEarningsFromWorker(ticker, cache, true);
+    }
 
-        // 실적발표가 이미 끝났다면 다음 분기(3개월 뒤) 일정으로 자동 업데이트
-        while (earnDate < now) {
-          earnDate.setMonth(earnDate.getMonth() + 3);
-        }
+    // 재시도까지 실패한 경우: 이미 정상 날짜가 표시되어 있었다면 그대로 유지 (깜빡임/후퇴 방지)
+    const alreadyValid = /^\d{4}-\d{2}-\d{2}$/.test(cache.earnings.innerText);
+    if (!alreadyValid) {
+      cache.earnings.innerText = '미정';
+      cache.earnings.title = 'Worker에서 실적발표일 데이터를 가져오지 못했습니다.';
+    }
+  } catch (e) {
+    // 네트워크 오류 등으로 catch에 걸린 경우: 재시도 안 했으면 재시도
+    if (!isRetry) {
+      await new Promise(r => setTimeout(r, 700));
+      return await fetchEarningsFromWorker(ticker, cache, true);
+    }
 
-        const year = earnDate.getFullYear();
-        const month = String(earnDate.getMonth() + 1).padStart(2, '0');
-        const day = String(earnDate.getDate()).padStart(2, '0');
-
-        cache.earnings.innerText = `${year}-${month}-${day}`;
-        cache.earnings.title = '';
-        return;
-      }
-
-      if (!isRetry) {
-        // 일시적인 오류일 수 있으니 잠깐 대기 후 한 번만 재시도
-        await new Promise(r => setTimeout(r, 700));
-        return fetchEarningsFromWorker(ticker, cache, true);
-      }
-
-      // 재시도까지 실패한 경우: 이미 정상 날짜가 표시되어 있었다면 그대로 유지 (깜빡임/후퇴 방지)
-      const alreadyValid = /^\d{4}-\d{2}-\d{2}$/.test(cache.earnings.innerText);
-      if (!alreadyValid) {
-        cache.earnings.innerText = '미정';
-        cache.earnings.title = 'Worker에서 실적발표일 데이터를 가져오지 못했습니다.';
-      }
-    } catch (e) {
-      const alreadyValid = /^\d{4}-\d{2}-\d{2}$/.test(cache.earnings.innerText);
-      if (!alreadyValid) {
-        cache.earnings.innerText = '미정';
-        cache.earnings.title = 'Worker 연결에 실패했습니다.';
-      }
+    const alreadyValid = /^\d{4}-\d{2}-\d{2}$/.test(cache.earnings.innerText);
+    if (!alreadyValid) {
+      cache.earnings.innerText = '미정';
+      cache.earnings.title = 'Worker 연결에 실패했습니다.';
     }
   }
+}
 
   function calculateRSI(prices, period = 14) {
     let gains = [], losses = [];
