@@ -4,18 +4,18 @@
   --bg: #0b0d12;
   --surface: #12151c;
   --surface-2: #171b24;
-  --border: #23283350;
-  --border-strong: #2a2f3d;
-  --text: #e7e9ee;
-  --text-dim: #8b93a3;
-  --text-faint: #5b6274;
-  --accent: #4d8dff;
+  --border: #2a2f3d80;
+  --border-strong: #333a4a;
+  --text: #f2f3f7;
+  --text-dim: #aab2c4;
+  --text-faint: #7a8296;
+  --accent: #5b9bff;
   --accent-dim: #4d8dff26;
-  --green: #34d399;
+  --green: #3ddba0;
   --green-dim: #34d3991f;
-  --red: #f87171;
+  --red: #ff5c5c;
   --red-dim: #f871711f;
-  --amber: #fbbf24;
+  --amber: #ffc94d;
 }
 
 body {
@@ -95,10 +95,10 @@ input:focus { outline: none; border-color: var(--accent); }
 #tickerInput {
   width: 84px;
   text-transform: uppercase;
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: 'JetBrains Mono', monospace;
   font-weight: 600;
 }
-#fairValueInput { width: 96px; font-family: 'IBM Plex Mono', monospace; }
+#fairValueInput { width: 96px; font-family: 'JetBrains Mono', monospace; }
 
 button {
   padding: 10px 13px; /* 터치 타깃 확대 */
@@ -142,7 +142,7 @@ button:active { transform: scale(0.96); }
 }
 
 .list-count {
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: 'JetBrains Mono', monospace;
   color: var(--text-faint);
 }
 
@@ -155,8 +155,8 @@ button:active { transform: scale(0.96); }
 }
 
 .board {
-  min-width: 520px;
-  font-family: 'IBM Plex Mono', monospace;
+  min-width: 560px;
+  font-family: 'JetBrains Mono', monospace;
   background: #0a0a0a;
   border-radius: 10px;
   overflow: hidden;
@@ -164,31 +164,33 @@ button:active { transform: scale(0.96); }
 
 .board-header, .board-row {
   display: grid;
-  grid-template-columns: 34px 64px 62px 84px 48px 70px 82px;
-  gap: 6px;
+  grid-template-columns: 34px 68px 66px 90px 50px 74px 88px;
+  gap: 8px;
   align-items: center;
 }
 
 .board-header {
-  padding: 8px 6px;
-  background: #161616;
+  padding: 9px 8px;
+  background: #1b1b1b;
   border-bottom: 2px solid var(--border-strong);
-  font-size: 10px;
-  color: var(--text-faint);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-dim);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
 }
 
 .board-header > span { padding: 0 4px; text-align: right; }
 .board-header > span:nth-child(2) { text-align: left; }
 
 .board-row {
-  padding: 8px 6px;
-  border-bottom: 1px solid #1a1a1a;
-  font-size: 12px;
+  padding: 10px 8px;
+  border-bottom: 1px solid #1e1e1e;
+  font-size: 13px;
   transition: opacity 0.15s, background-color 0.15s;
 }
 .board-row:last-child { border-bottom: none; }
+.board-row:nth-child(even) { background-color: #101010; }
 
 .board-row.dragging { opacity: 0.35; }
 .board-row.drag-over {
@@ -203,15 +205,15 @@ button:active { transform: scale(0.96); }
 }
 
 .row-checkbox {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
   accent-color: var(--accent);
   flex-shrink: 0;
 }
 
 .drag-icon {
-  font-size: 15px;
-  color: var(--text-faint);
+  font-size: 16px;
+  color: var(--text-dim);
   cursor: grab;
   padding: 4px 4px; /* 터치 타깃 확보 */
   touch-action: none; /* 드래그 중 브라우저 기본 스크롤 제스처와 충돌 방지 */
@@ -223,7 +225,7 @@ button:active { transform: scale(0.96); }
 
 .board-ticker {
   font-weight: 700;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -237,7 +239,8 @@ button:active { transform: scale(0.96); }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--text-dim);
 }
 
@@ -252,8 +255,8 @@ button:active { transform: scale(0.96); }
   border-radius: 0;
   background-color: transparent;
   color: var(--text-dim);
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -264,9 +267,9 @@ button:active { transform: scale(0.96); }
 
 /* --- 데이터 상태 색상 (지표 존) --- */
 .current-price-val { font-weight: 700; color: var(--text); }
-.price-change-percent { font-size: 9px; display: block; line-height: 1.3; font-family: 'IBM Plex Mono', monospace; }
-.change-up { color: var(--red); font-weight: 600; }
-.change-down { color: var(--accent); font-weight: 600; }
+.price-change-percent { font-size: 10.5px; display: block; line-height: 1.4; font-family: 'JetBrains Mono', monospace; font-weight: 600; margin-top: 1px; }
+.change-up { color: var(--red); }
+.change-down { color: var(--accent); }
 .change-flat { color: var(--text-faint); }
 
 .price-buy-zone.stat-value, .price-buy-zone .current-price-val { color: var(--amber) !important; }
