@@ -390,7 +390,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch(`${WORKER_BASE_URL}/earnings?ticker=${encodeURIComponent(ticker)}&_=${Date.now()}`, { cache: 'no-store' });
       const data = await res.json();
       const timestamp = typeof data?.timestamp === 'number' ? data.timestamp : null;
-      console.log(`[실적발표일 진단] ${ticker} isRetry=${isRetry} 응답:`, data, 'cache.earnings 요소가 문서에 붙어있는가:', document.body.contains(cache.earnings));
 
       if (timestamp) {
         let earnDate = new Date(timestamp * 1000);
@@ -409,10 +408,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const month = String(earnDate.getMonth() + 1).padStart(2, '0');
         const day = String(earnDate.getDate()).padStart(2, '0');
 
-        console.log(`[실적발표일 진단] ${ticker} 계산된 날짜: ${year}-${month}-${day}, 쓰기 직전 innerText:`, cache.earnings.innerText);
         cache.earnings.innerText = `${year}-${month}-${day}`;
         cache.earnings.title = '';
-        console.log(`[실적발표일 진단] ${ticker} 쓰기 직후 innerText:`, cache.earnings.innerText, ', 실제 화면 텍스트:', document.getElementById('stockTableBody')?.textContent.includes(`${year}-${month}-${day}`));
         return;
       }
 
@@ -424,13 +421,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // 재시도까지 실패한 경우: 이미 정상 날짜가 표시되어 있었다면 그대로 유지 (깜빡임/후퇴 방지)
       const alreadyValid = /^\d{4}-\d{2}-\d{2}$/.test(cache.earnings.innerText);
-      console.log(`[실적발표일 진단] ${ticker} 재시도까지 실패. alreadyValid=${alreadyValid}, 현재 innerText:`, cache.earnings.innerText);
       if (!alreadyValid) {
         cache.earnings.innerText = '미정';
         cache.earnings.title = 'Worker에서 실적발표일 데이터를 가져오지 못했습니다.';
       }
     } catch (e) {
-      console.log(`[실적발표일 진단] ${ticker} 예외 발생:`, e);
       const alreadyValid = /^\d{4}-\d{2}-\d{2}$/.test(cache.earnings.innerText);
       if (!alreadyValid) {
         cache.earnings.innerText = '미정';
