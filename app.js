@@ -267,10 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <input type="checkbox" class="row-checkbox" data-index="${index}">
           <span class="drag-icon" data-index="${index}" aria-label="순서 변경(드래그)">⠿</span>
         </span>
-        <span class="board-ticker">
-          <button type="button" class="category-badge" data-index="${index}" title="탭하여 보유/관심 전환">${isHolding ? '💼' : '👁'}</button>
-          ${stock.ticker}
-        </span>
+        <span class="board-ticker">${stock.ticker}</span>
         <span class="board-fair">
           <input type="text" class="edit-fair-input" data-index="${index}" value="${stock.fairValue.toFixed(2)}" inputmode="decimal" disabled>
         </span>
@@ -279,11 +276,6 @@ document.addEventListener('DOMContentLoaded', () => {
         <span class="stat-value cell-sma board-num">로딩중</span>
         <span class="stat-value cell-earnings board-num">로딩중</span>
       `;
-
-      row.querySelector('.category-badge').addEventListener('click', () => {
-        stocks[index].category = stocks[index].category === 'holding' ? 'watch' : 'holding';
-        saveStocks(() => renderTable());
-      });
 
       domCache[stock.ticker] = {
         row: row,
