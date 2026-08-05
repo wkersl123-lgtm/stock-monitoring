@@ -146,12 +146,35 @@ button:active { transform: scale(0.96); }
   color: var(--text-faint);
 }
 
+/* --- 섹션 제목(보유/관심) --- */
+.board-section-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dim);
+  margin: 18px 2px 8px;
+}
+.board-section-title:first-of-type { margin-top: 4px; }
+
+.board-empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
 /* --- 시세판(Ticker board) --- */
 .board-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   border-radius: 10px;
   border: 1px solid var(--border-strong);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.board-wrap.section-drop-target {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .board {
@@ -162,28 +185,11 @@ button:active { transform: scale(0.96); }
   overflow: hidden;
 }
 
-.board-header, .board-row {
+.board-row {
   display: grid;
   grid-template-columns: 34px 68px 66px 90px 50px 74px 88px;
   gap: 8px;
   align-items: center;
-}
-
-.board-header {
-  padding: 9px 8px;
-  background: #1b1b1b;
-  border-bottom: 2px solid var(--border-strong);
-  font-size: 10.5px;
-  font-weight: 600;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.board-header > span { padding: 0 4px; text-align: right; }
-.board-header > span:nth-child(2) { text-align: left; }
-
-.board-row {
   padding: 10px 8px;
   border-bottom: 1px solid #1e1e1e;
   font-size: 13px;
@@ -231,7 +237,22 @@ button:active { transform: scale(0.96); }
   text-overflow: ellipsis;
   white-space: nowrap;
   padding: 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
+
+.category-badge {
+  background: none;
+  border: none;
+  padding: 2px; /* 아이콘 자체 시인성은 유지하되 터치 타깃은 살짝만 확보 */
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  filter: grayscale(0.15);
+}
+.category-badge:active { transform: scale(0.9); }
 
 .board-fair, .board-num {
   text-align: right;
