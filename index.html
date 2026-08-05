@@ -49,18 +49,19 @@
     <span class="list-count" id="listCount"></span>
   </div>
 
-  <div class="board-wrap">
-    <div class="board">
-      <div class="board-header">
-        <span class="board-col-ctrl"></span>
-        <span>티커</span>
-        <span>적정</span>
-        <span>현재</span>
-        <span>RSI</span>
-        <span>200D</span>
-        <span>실적일</span>
+  <div id="boardsWrapper">
+    <div class="board-section-title">보유한 종목</div>
+    <div class="board-wrap" id="holdingsWrap">
+      <div class="board">
+        <div id="holdingsBody" class="board-body"></div>
       </div>
-      <div id="stockTableBody" class="board-body"></div>
+    </div>
+
+    <div class="board-section-title">관심 종목</div>
+    <div class="board-wrap" id="watchWrap">
+      <div class="board">
+        <div id="watchBody" class="board-body"></div>
+      </div>
     </div>
   </div>
 
