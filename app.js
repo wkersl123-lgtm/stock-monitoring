@@ -11,7 +11,11 @@ document.addEventListener('DOMContentLoaded', () => {
     deleteSelectedBtn: document.getElementById('deleteSelectedBtn'),
     refreshBtn: document.getElementById('refreshBtn'),
     selectAllCheckbox: document.getElementById('selectAllCheckbox'),
-    stockTableBody: document.getElementById('stockTableBody'),
+    holdingsBody: document.getElementById('holdingsBody'),
+    watchBody: document.getElementById('watchBody'),
+    holdingsWrap: document.getElementById('holdingsWrap'),
+    watchWrap: document.getElementById('watchWrap'),
+    boardsWrapper: document.getElementById('boardsWrapper'),
     helpBtn: document.getElementById('helpBtn'),
     helpModal: document.getElementById('helpModal'),
     closeBtn: document.querySelector('.close-btn')
@@ -26,7 +30,9 @@ document.addEventListener('DOMContentLoaded', () => {
   function loadStocks() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
+      const parsed = raw ? JSON.parse(raw) : [];
+      // 기존에 저장된 데이터(카테고리 없음)는 관심 종목으로 마이그레이션
+      return parsed.map(s => ({ category: 'watch', ...s }));
     } catch (e) {
       return [];
     }
@@ -48,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!ticker || isNaN(fairValue)) return alert('티커와 정확한 적정주가를 입력해주세요.');
     if (stocks.some(s => s.ticker === ticker)) return alert('이미 등록된 티커입니다.');
 
-    stocks.push({ ticker, fairValue });
+    stocks.push({ ticker, fairValue, category: 'watch' });
     saveStocks(() => {
       el.tickerInput.value = '';
       el.fairValueInput.value = '';
@@ -125,69 +131,111 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 6-3. 터치/마우스 드래그로 순서 변경 (Pointer Events - 터치/마우스/펜을 동일하게 처리하므로
-  // 안드로이드 터치에서도 확실하게 동작함. 예전 HTML5 draggable 방식은 모바일 브라우저에서
-  // 기본 지원되지 않아 동작하지 않았음)
-  let dragState = null; // { startIndex, currentIndex, pointerId }
+  // 6-3. 터치/마우스 드래그로 순서 변경 + 섹션(보유/관심) 간 자유로운 이동 (Pointer Events -
+  // 터치/마우스/펜을 동일하게 처리하므로 안드로이드 터치에서도 확실하게 동작함)
+  let dragState = null; // { startIndex, currentIndex, pointerId, hoverCategory }
 
-  if (el.stockTableBody) {
-    el.stockTableBody.addEventListener('pointerdown', (e) => {
+  function categoryOf(stock) {
+    return stock.category === 'holding' ? 'holding' : 'watch';
+  }
+
+  function sectionAtPoint(clientY) {
+    if (el.holdingsWrap) {
+      const r = el.holdingsWrap.getBoundingClientRect();
+      if (clientY >= r.top && clientY <= r.bottom) return 'holding';
+    }
+    if (el.watchWrap) {
+      const r = el.watchWrap.getBoundingClientRect();
+      if (clientY >= r.top && clientY <= r.bottom) return 'watch';
+    }
+    return null;
+  }
+
+  function clearDragVisuals() {
+    document.querySelectorAll('.board-row').forEach(r => r.classList.remove('dragging', 'drag-over'));
+    if (el.holdingsWrap) el.holdingsWrap.classList.remove('section-drop-target');
+    if (el.watchWrap) el.watchWrap.classList.remove('section-drop-target');
+  }
+
+  if (el.boardsWrapper) {
+    el.boardsWrapper.addEventListener('pointerdown', (e) => {
       const handle = e.target.closest('.drag-icon');
       if (!handle) return;
       e.preventDefault();
 
       const row = handle.closest('.board-row');
       const startIndex = parseInt(handle.getAttribute('data-index'));
-      dragState = { startIndex, currentIndex: startIndex, pointerId: e.pointerId };
+      dragState = { startIndex, currentIndex: startIndex, pointerId: e.pointerId, hoverCategory: categoryOf(stocks[startIndex]) };
       row.classList.add('dragging');
       try { handle.setPointerCapture(e.pointerId); } catch (err) { /* 일부 브라우저는 미지원 - 무시 */ }
     });
 
-    el.stockTableBody.addEventListener('pointermove', (e) => {
+    el.boardsWrapper.addEventListener('pointermove', (e) => {
       if (!dragState || e.pointerId !== dragState.pointerId) return;
       e.preventDefault();
 
-      document.querySelectorAll('.board-row').forEach(r => r.classList.remove('drag-over'));
+      const hoverCategory = sectionAtPoint(e.clientY);
+      dragState.hoverCategory = hoverCategory;
 
-      const rows = Array.from(el.stockTableBody.querySelectorAll('.board-row'));
-      for (const r of rows) {
-        const rect = r.getBoundingClientRect();
-        if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
-          dragState.currentIndex = parseInt(r.getAttribute('data-index'));
-          r.classList.add('drag-over');
-          break;
+      document.querySelectorAll('.board-row').forEach(r => r.classList.remove('drag-over'));
+      if (el.holdingsWrap) el.holdingsWrap.classList.toggle('section-drop-target', hoverCategory === 'holding');
+      if (el.watchWrap) el.watchWrap.classList.toggle('section-drop-target', hoverCategory === 'watch');
+
+      if (hoverCategory) {
+        const container = hoverCategory === 'holding' ? el.holdingsBody : el.watchBody;
+        const rows = container ? Array.from(container.querySelectorAll('.board-row')) : [];
+        for (const r of rows) {
+          const rect = r.getBoundingClientRect();
+          if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
+            dragState.currentIndex = parseInt(r.getAttribute('data-index'));
+            r.classList.add('drag-over');
+            break;
+          }
         }
       }
     });
 
     const finishDrag = () => {
       if (!dragState) return;
-      const { startIndex, currentIndex } = dragState;
-      document.querySelectorAll('.board-row').forEach(r => r.classList.remove('dragging', 'drag-over'));
+      const { startIndex, currentIndex, hoverCategory } = dragState;
+      clearDragVisuals();
       dragState = null;
 
-      if (startIndex !== currentIndex) {
+      if (!hoverCategory) return; // 어느 섹션 위에도 놓지 않았으면 취소
+
+      const item = stocks[startIndex];
+      const originCategory = categoryOf(item);
+
+      if (originCategory !== hoverCategory) {
+        // 다른 섹션으로 이동: 카테고리 변경 후 해당 섹션 맨 끝으로 이동
+        stocks.splice(startIndex, 1);
+        item.category = hoverCategory;
+        stocks.push(item);
+        saveStocks(() => renderTable());
+      } else if (startIndex !== currentIndex) {
+        // 같은 섹션 내 순서 변경
         const movedItem = stocks.splice(startIndex, 1)[0];
         stocks.splice(currentIndex, 0, movedItem);
         saveStocks(() => renderTable());
       }
     };
 
-    el.stockTableBody.addEventListener('pointerup', (e) => {
+    el.boardsWrapper.addEventListener('pointerup', (e) => {
       if (!dragState || e.pointerId !== dragState.pointerId) return;
       finishDrag();
     });
 
-    el.stockTableBody.addEventListener('pointercancel', () => {
-      document.querySelectorAll('.board-row').forEach(r => r.classList.remove('dragging', 'drag-over'));
+    el.boardsWrapper.addEventListener('pointercancel', () => {
+      clearDragVisuals();
       dragState = null;
     });
   }
 
   // 7. 카드 리스트 렌더링 (순서 변경은 위 Pointer Events 드래그 앤 드롭으로 처리)
   function renderTable() {
-    if (!el.stockTableBody) return;
-    el.stockTableBody.innerHTML = '';
+    if (!el.holdingsBody || !el.watchBody) return;
+    el.holdingsBody.innerHTML = '';
+    el.watchBody.innerHTML = '';
 
     if (updateTimer) {
       clearInterval(updateTimer);
@@ -196,14 +244,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     for (const key in domCache) delete domCache[key];
 
+    const holdingCount = stocks.filter(s => s.category === 'holding').length;
+    const watchCount = stocks.filter(s => s.category !== 'holding').length;
     const listCount = document.getElementById('listCount');
-    if (listCount) listCount.innerText = stocks.length > 0 ? `${stocks.length}개 종목` : '';
+    if (listCount) {
+      listCount.innerText = stocks.length > 0 ? `보유 ${holdingCount} · 관심 ${watchCount}` : '';
+    }
 
     if (stocks.length === 0) return;
 
-    const fragment = document.createDocumentFragment();
+    const holdingsFragment = document.createDocumentFragment();
+    const watchFragment = document.createDocumentFragment();
 
     stocks.forEach((stock, index) => {
+      const isHolding = stock.category === 'holding';
       const row = document.createElement('div');
       row.className = 'board-row';
       row.setAttribute('data-index', index);
@@ -213,7 +267,10 @@ document.addEventListener('DOMContentLoaded', () => {
           <input type="checkbox" class="row-checkbox" data-index="${index}">
           <span class="drag-icon" data-index="${index}" aria-label="순서 변경(드래그)">⠿</span>
         </span>
-        <span class="board-ticker">${stock.ticker}</span>
+        <span class="board-ticker">
+          <button type="button" class="category-badge" data-index="${index}" title="탭하여 보유/관심 전환">${isHolding ? '💼' : '👁'}</button>
+          ${stock.ticker}
+        </span>
         <span class="board-fair">
           <input type="text" class="edit-fair-input" data-index="${index}" value="${stock.fairValue.toFixed(2)}" inputmode="decimal" disabled>
         </span>
@@ -223,6 +280,11 @@ document.addEventListener('DOMContentLoaded', () => {
         <span class="stat-value cell-earnings board-num">로딩중</span>
       `;
 
+      row.querySelector('.category-badge').addEventListener('click', () => {
+        stocks[index].category = stocks[index].category === 'holding' ? 'watch' : 'holding';
+        saveStocks(() => renderTable());
+      });
+
       domCache[stock.ticker] = {
         row: row,
         price: row.querySelector('.cell-price'),
@@ -231,10 +293,18 @@ document.addEventListener('DOMContentLoaded', () => {
         earnings: row.querySelector('.cell-earnings')
       };
 
-      fragment.appendChild(row);
+      (isHolding ? holdingsFragment : watchFragment).appendChild(row);
     });
 
-    el.stockTableBody.appendChild(fragment);
+    el.holdingsBody.appendChild(holdingsFragment);
+    el.watchBody.appendChild(watchFragment);
+
+    if (holdingCount === 0) {
+      el.holdingsBody.innerHTML = '<div class="board-empty">보유 종목이 없습니다.</div>';
+    }
+    if (watchCount === 0) {
+      el.watchBody.innerHTML = '<div class="board-empty">관심 종목이 없습니다.</div>';
+    }
 
     document.querySelectorAll('.edit-fair-input').forEach(input => {
       input.addEventListener('input', e => e.target.value = e.target.value.replace(/[^0-9.]/g, ''));
