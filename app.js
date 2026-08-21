@@ -152,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function clearDragVisuals() {
-    document.querySelectorAll('.board-row').forEach(r => r.classList.remove('dragging', 'drag-over'));
+    document.querySelectorAll('.stock-tile').forEach(r => r.classList.remove('dragging', 'drag-over'));
     if (el.holdingsWrap) el.holdingsWrap.classList.remove('section-drop-target');
     if (el.watchWrap) el.watchWrap.classList.remove('section-drop-target');
   }
@@ -163,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!handle) return;
       e.preventDefault();
 
-      const row = handle.closest('.board-row');
+      const row = handle.closest('.stock-tile');
       const startIndex = parseInt(handle.getAttribute('data-index'));
       dragState = { startIndex, currentIndex: startIndex, pointerId: e.pointerId, hoverCategory: categoryOf(stocks[startIndex]) };
       row.classList.add('dragging');
@@ -177,13 +177,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const hoverCategory = sectionAtPoint(e.clientY);
       dragState.hoverCategory = hoverCategory;
 
-      document.querySelectorAll('.board-row').forEach(r => r.classList.remove('drag-over'));
+      document.querySelectorAll('.stock-tile').forEach(r => r.classList.remove('drag-over'));
       if (el.holdingsWrap) el.holdingsWrap.classList.toggle('section-drop-target', hoverCategory === 'holding');
       if (el.watchWrap) el.watchWrap.classList.toggle('section-drop-target', hoverCategory === 'watch');
 
       if (hoverCategory) {
         const container = hoverCategory === 'holding' ? el.holdingsBody : el.watchBody;
-        const rows = container ? Array.from(container.querySelectorAll('.board-row')) : [];
+        const rows = container ? Array.from(container.querySelectorAll('.stock-tile')) : [];
         for (const r of rows) {
           const rect = r.getBoundingClientRect();
           if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
@@ -259,22 +259,25 @@ document.addEventListener('DOMContentLoaded', () => {
     stocks.forEach((stock, index) => {
       const isHolding = stock.category === 'holding';
       const row = document.createElement('div');
-      row.className = 'board-row';
+      row.className = 'stock-tile';
       row.setAttribute('data-index', index);
 
       row.innerHTML = `
-        <span class="board-col-ctrl">
+        <div class="tile-top">
           <input type="checkbox" class="row-checkbox" data-index="${index}">
           <span class="drag-icon" data-index="${index}" aria-label="순서 변경(드래그)">⠿</span>
-        </span>
-        <span class="board-ticker">${stock.ticker}</span>
-        <span class="board-fair">
-          <input type="text" class="edit-fair-input" data-index="${index}" value="${stock.fairValue.toFixed(2)}" inputmode="decimal" disabled>
-        </span>
-        <span class="stat-value cell-price board-num">로딩중</span>
-        <span class="stat-value cell-rsi board-num">로딩중</span>
-        <span class="stat-value cell-sma board-num">로딩중</span>
-        <span class="stat-value cell-earnings board-num">로딩중</span>
+        </div>
+        <div class="tile-ticker">${stock.ticker}</div>
+        <div class="tile-price cell-price">로딩중</div>
+        <div class="tile-meta">
+          <div class="meta-row"><span>RSI</span><span class="cell-rsi">-</span></div>
+          <div class="meta-row"><span>200D</span><span class="cell-sma">-</span></div>
+          <div class="meta-row"><span>실적일</span><span class="cell-earnings">-</span></div>
+          <div class="meta-row">
+            <span>적정</span>
+            <input type="text" class="edit-fair-input" data-index="${index}" value="${stock.fairValue.toFixed(2)}" inputmode="decimal" disabled>
+          </div>
+        </div>
       `;
 
       domCache[stock.ticker] = {
@@ -331,6 +334,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const cache = domCache[ticker];
     if (!cache) return;
 
+    // 타일 전체 배경색은 아래 우선순위로 하나만 적용: 저평가 > RSI과열 > RSI과매도 > 200일선 이탈 > 평범
+    let isBuyZone = false, isRsiHigh = false, isRsiLow = false, isSmaZone = false;
+
     const chartUrl = `${WORKER_BASE_URL}/chart?ticker=${encodeURIComponent(ticker)}&_=${Date.now()}`;
 
     try {
@@ -342,9 +348,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const rawCloses = result?.indicators?.quote?.[0]?.close;
 
       if (!result || !rawCloses) {
-        cache.price.innerText = '오류'; cache.price.className = 'stat-value cell-price board-num';
-        cache.rsi.innerText = '-'; cache.rsi.className = 'stat-value cell-rsi board-num'; cache.rsi.title = '';
-        cache.sma.innerText = '-'; cache.sma.className = 'stat-value cell-sma board-num'; cache.sma.title = '';
+        cache.price.innerText = '오류';
+        cache.rsi.innerText = '-'; cache.rsi.title = '';
+        cache.sma.innerText = '-'; cache.sma.title = '';
       } else {
         const prices = rawCloses.filter(p => p !== null);
         const meta = result.meta;
@@ -381,13 +387,11 @@ document.addEventListener('DOMContentLoaded', () => {
           const targetStock = stocks.find(s => s.ticker === ticker);
           if (targetStock) {
             if (currentPrice < targetStock.fairValue) {
-              cache.price.className = 'stat-value cell-price board-num price-buy-zone';
+              isBuyZone = true;
               cache.price.title = `현재가가 적정가($${targetStock.fairValue.toFixed(2)})보다 낮습니다! (저평가 구간)`;
             } else if (currentPrice > targetStock.fairValue) {
-              cache.price.className = 'stat-value cell-price board-num price-high-zone';
               cache.price.title = `현재가가 적정가($${targetStock.fairValue.toFixed(2)})보다 높습니다.`;
             } else {
-              cache.price.className = 'stat-value cell-price board-num';
               cache.price.title = "현재가가 적정가와 일치합니다.";
             }
           }
@@ -400,13 +404,12 @@ document.addEventListener('DOMContentLoaded', () => {
           cache.rsi.innerText = rsiValue.toFixed(2);
 
           if (rsiValue <= 30) {
-            cache.rsi.className = 'stat-value cell-rsi board-num rsi-low';
+            isRsiLow = true;
             cache.rsi.title = "RSI가 30 이하입니다! 침체 구간 (과매도 매수 신호)";
           } else if (rsiValue >= 70) {
-            cache.rsi.className = 'stat-value cell-rsi board-num rsi-high';
+            isRsiHigh = true;
             cache.rsi.title = "RSI가 70 이상입니다! 과열 구간 (과매수 경계 신호)";
           } else {
-            cache.rsi.className = 'stat-value cell-rsi board-num';
             cache.rsi.title = "안정적인 중간 흐름 구간입니다.";
           }
         } else {
@@ -420,10 +423,9 @@ document.addEventListener('DOMContentLoaded', () => {
           cache.sma.innerText = `$${sma200.toFixed(2)}`;
 
           if (currentPrice && currentPrice <= sma200) {
-            cache.sma.className = 'stat-value cell-sma board-num sma-buy-zone';
+            isSmaZone = true;
             cache.sma.title = "현재가가 200일 이동평균선 이하입니다! (장기 매수구간)";
           } else {
-            cache.sma.className = 'stat-value cell-sma board-num';
             cache.sma.title = "현재가가 200일선 위에 있습니다.";
           }
         } else {
@@ -431,6 +433,13 @@ document.addEventListener('DOMContentLoaded', () => {
           cache.sma.title = "200일선 계산을 위한 과거 일수가 부족합니다.";
         }
       }
+
+      // 타일 전체 배경 상태 반영 (우선순위: 저평가 > RSI과열 > RSI과매도 > 200일선 이탈 > 평범)
+      cache.row.classList.remove('tile-buyzone', 'tile-rsi-high', 'tile-rsi-low', 'tile-sma-zone');
+      if (isBuyZone) cache.row.classList.add('tile-buyzone');
+      else if (isRsiHigh) cache.row.classList.add('tile-rsi-high');
+      else if (isRsiLow) cache.row.classList.add('tile-rsi-low');
+      else if (isSmaZone) cache.row.classList.add('tile-sma-zone');
 
       // 2) 실적발표일 (Worker가 crumb 인증까지 처리한 결과를 받음)
       await fetchEarningsFromWorker(ticker, cache);
