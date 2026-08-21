@@ -156,75 +156,43 @@ button:active { transform: scale(0.96); }
 }
 .board-section-title:first-of-type { margin-top: 4px; }
 
-.board-empty {
-  padding: 16px;
-  text-align: center;
-  font-size: 12px;
-  color: var(--text-faint);
+/* --- 위젯 타일 그리드 --- */
+.section-wrap {
+  transition: box-shadow 0.15s;
+  border-radius: 14px;
 }
 
-/* --- 시세판(Ticker board) --- */
-.board-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  border-radius: 10px;
-  border: 1px solid var(--border-strong);
-  transition: border-color 0.15s, box-shadow 0.15s;
+.section-wrap.section-drop-target {
+  box-shadow: 0 0 0 2px var(--accent);
 }
 
-.board-wrap.section-drop-target {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
-}
-
-.board {
-  min-width: 560px;
-  font-family: 'JetBrains Mono', monospace;
-  background: #0a0a0a;
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.board-header, .board-row {
+.tile-grid {
   display: grid;
-  grid-template-columns: 34px 68px 66px 90px 50px 74px 88px;
-  gap: 8px;
-  align-items: center;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 
-.board-header {
-  padding: 9px 8px;
-  background: #1b1b1b;
-  border-bottom: 2px solid var(--border-strong);
-  font-size: 10.5px;
-  font-weight: 600;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+.stock-tile {
+  background-color: #1e1e1e;
+  border-radius: 14px;
+  padding: 12px 14px 14px;
+  font-family: 'Inter', sans-serif;
+  transition: opacity 0.15s, transform 0.15s, background-color 0.2s;
 }
 
-.board-header > span { padding: 0 4px; text-align: right; }
-.board-header > span:nth-child(2) { text-align: left; }
+.stock-tile.dragging { opacity: 0.4; transform: scale(0.97); }
+.stock-tile.drag-over { box-shadow: 0 0 0 2px var(--accent); }
 
-.board-row {
-  padding: 10px 8px;
-  border-bottom: 1px solid #1e1e1e;
-  font-size: 13px;
-  transition: opacity 0.15s, background-color 0.15s;
-}
-.board-row:last-child { border-bottom: none; }
-.board-row:nth-child(even) { background-color: #101010; }
+.stock-tile.tile-buyzone { background-color: #4a3b1a; }
+.stock-tile.tile-rsi-high { background-color: #4a1a1a; }
+.stock-tile.tile-rsi-low { background-color: #163045; }
+.stock-tile.tile-sma-zone { background-color: #163a2a; }
 
-.board-row.dragging { opacity: 0.35; }
-.board-row.drag-over {
-  background-color: var(--accent-dim);
-  box-shadow: inset 0 0 0 1px var(--accent);
-}
-
-.board-col-ctrl {
+.tile-top {
   display: flex;
   align-items: center;
-  gap: 0;
+  justify-content: space-between;
+  margin-bottom: 4px;
 }
 
 .row-checkbox {
@@ -236,9 +204,9 @@ button:active { transform: scale(0.96); }
 
 .drag-icon {
   font-size: 16px;
-  color: var(--text-dim);
+  color: var(--text-faint);
   cursor: grab;
-  padding: 4px 4px; /* 터치 타깃 확보 */
+  padding: 4px; /* 터치 타깃 확보 */
   touch-action: none; /* 드래그 중 브라우저 기본 스크롤 제스처와 충돌 방지 */
   user-select: none;
   line-height: 1;
@@ -246,61 +214,75 @@ button:active { transform: scale(0.96); }
 }
 .drag-icon:active { cursor: grabbing; color: var(--text); }
 
-.board-ticker {
+.tile-ticker {
+  font-family: 'JetBrains Mono', monospace;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding: 0 4px;
 }
 
-.board-fair, .board-num {
-  text-align: right;
-  padding: 0 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 13px;
-  font-weight: 500;
+.tile-price {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 8px 0 8px;
+  line-height: 1.25;
+}
+
+.current-price-val { font-weight: 700; color: var(--text); }
+.price-change-percent { font-size: 11px; display: block; line-height: 1.4; font-weight: 600; margin-top: 2px; }
+.change-up { color: var(--red); }
+.change-down { color: var(--accent); }
+.change-flat { color: var(--text-faint); }
+
+.tile-meta {
+  font-size: 11.5px;
   color: var(--text-dim);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
-.stat-value.board-num { color: var(--text); font-weight: 600; }
+.meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.meta-row > span:first-child {
+  color: var(--text-faint);
+}
+
+.meta-row > span:last-child,
+.meta-row .edit-fair-input {
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+}
 
 .edit-fair-input {
-  width: 100%;
+  width: 60px;
   text-align: right;
   padding: 0;
   border: none;
   border-bottom: 1px dashed transparent;
   border-radius: 0;
   background-color: transparent;
-  color: var(--text-dim);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
+  font-size: 11.5px;
   font-weight: 600;
 }
 
 .edit-fair-input:not(:disabled) {
   border-bottom: 1px dashed var(--amber);
-  color: var(--text);
 }
 
-/* --- 데이터 상태 색상 (지표 존) --- */
-.current-price-val { font-weight: 700; color: var(--text); }
-.price-change-percent { font-size: 10.5px; display: block; line-height: 1.4; font-family: 'JetBrains Mono', monospace; font-weight: 600; margin-top: 1px; }
-.change-up { color: var(--red); }
-.change-down { color: var(--accent); }
-.change-flat { color: var(--text-faint); }
+.board-empty {
+  grid-column: 1 / -1;
+  padding: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-faint);
+}
 
-.price-buy-zone.stat-value, .price-buy-zone .current-price-val { color: var(--amber) !important; }
-.price-high-zone.stat-value, .price-high-zone .current-price-val { color: var(--red) !important; }
-
-.rsi-high.stat-value { color: var(--red) !important; }
-.rsi-low.stat-value { color: var(--accent) !important; }
-.sma-buy-zone.stat-value { color: var(--green) !important; }
 
 /* --- 도움말 모달 --- */
 .modal {
