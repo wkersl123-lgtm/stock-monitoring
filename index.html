@@ -1,123 +1,368 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0a0a0a">
-  <meta name="description" content="야후 파이낸스 데이터로 주가, RSI, 200일선, 실적발표일을 추적합니다">
+* { box-sizing: border-box; }
 
-  <title>매일 지켜볼게 - 미국주식 모니터</title>
+:root {
+  --bg: #0b0d12;
+  --surface: #12151c;
+  --surface-2: #171b24;
+  --border: #2a2f3d80;
+  --border-strong: #333a4a;
+  --text: #f2f3f7;
+  --text-dim: #aab2c4;
+  --text-faint: #7a8296;
+  --accent: #5b9bff;
+  --accent-dim: #4d8dff26;
+  --green: #3ddba0;
+  --green-dim: #34d3991f;
+  --red: #ff5c5c;
+  --red-dim: #f871711f;
+  --amber: #ffc94d;
+}
 
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="icons/icon-192.png">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="지켜볼게">
+body {
+  font-family: 'Inter', 'Malgun Gothic', 'Segoe UI', sans-serif;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 16px;
+  padding-top: calc(16px + env(safe-area-inset-top));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  background-color: #0a0a0a;
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+/* --- 헤더 --- */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding: 4px 2px;
+}
 
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
+.app-title {
+  font-family: 'Space Grotesk', 'Inter', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
 
-  <header class="app-header">
-    <div class="app-header-text">
-      <h1 class="app-title">매일 지켜볼게</h1>
-      <p class="app-subtitle">미국주식 모니터</p>
-    </div>
-    <span class="live-dot" aria-hidden="true"></span>
-  </header>
+.app-subtitle {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 2px 0 0 0;
+}
 
-  <div class="input-box">
-    <input type="text" id="tickerInput" placeholder="티커">
-    <input type="text" id="fairValueInput" placeholder="적정가 ($)" step="0.01">
-    <button id="addStockBtn">추가</button>
-    <button id="editSelectedBtn">수정</button>
-    <button id="deleteSelectedBtn">삭제</button>
-    <button id="helpBtn">?</button>
-    <button id="refreshBtn">갱신</button>
-  </div>
+.live-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 0 var(--green-dim);
+  animation: pulse 2s infinite;
+  flex-shrink: 0;
+}
 
-  <div class="list-toolbar">
-    <label class="select-all-label">
-      <input type="checkbox" id="selectAllCheckbox">
-      전체 선택
-    </label>
-    <span class="list-count" id="listCount"></span>
-  </div>
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.5); }
+  70%  { box-shadow: 0 0 0 8px rgba(52, 211, 153, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+}
 
-  <div id="boardsWrapper">
-    <div class="board-section-title">보유한 종목</div>
-    <div class="board-wrap" id="holdingsWrap">
-      <div class="board">
-        <div class="board-header">
-          <span class="board-col-ctrl"></span>
-          <span>티커</span>
-          <span>적정</span>
-          <span>현재</span>
-          <span>RSI</span>
-          <span>200D</span>
-          <span>실적일</span>
-        </div>
-        <div id="holdingsBody" class="board-body"></div>
-      </div>
-    </div>
+/* --- 입력 툴바 --- */
+.input-box {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+}
 
-    <div class="board-section-title">관심 종목</div>
-    <div class="board-wrap" id="watchWrap">
-      <div class="board">
-        <div class="board-header">
-          <span class="board-col-ctrl"></span>
-          <span>티커</span>
-          <span>적정</span>
-          <span>현재</span>
-          <span>RSI</span>
-          <span>200D</span>
-          <span>실적일</span>
-        </div>
-        <div id="watchBody" class="board-body"></div>
-      </div>
-    </div>
-  </div>
+input {
+  padding: 9px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  font-size: 14px; /* 16px 미만은 iOS 자동확대 유발 - 안드로이드 기준 14px로 충분 */
+  font-family: 'Inter', sans-serif;
+  background-color: var(--surface);
+  color: var(--text);
+}
 
-  <div id="helpModal" class="modal">
-    <div class="modal-content">
-      <span class="close-btn">&times;</span>
-      <h3>💡 도움말</h3>
-      <div class="help-body">
-        <div class="help-section help-section-blue">
-          <h4 class="help-section-title help-section-title-blue">📌 추천 기준 1. [정량적 접근] RSI 지표 결합</h4>
-          <p class="help-section-desc">수식으로 구한 적정주가는 가치의 기준선으로 두고, 매매 타이밍은 기술적 과열 지표인 RSI를 기계적으로 결합하는 방법입니다.</p>
-          <blockquote class="help-quote">
-            <b>ℹ️ RSI 지표란?</b> 70 이상이면 <b>과열</b>(너도나도 삼), 30 이하이면 <b>침체</b>(공포에 질려 던짐)를 뜻합니다.
-          </blockquote>
-          <div class="help-rulebox help-rulebox-blue">
-            <span class="help-badge">🛒 매매 규칙</span>
-            <p class="help-rule"><b class="text-buy">• 분할 매수:</b> 주가 &lt; 적정주가 <b>AND</b> RSI 40 이하일 때 기계적 분할 매수</p>
-            <p class="help-rule"><b class="text-full-buy">• 풀매수:</b> 주가 &lt; 적정주가 <b>AND</b> RSI 30 이하(과매도)로 처박힐 때 풀매수</p>
-            <p class="help-rule"><b class="text-sell">• 매도 시점:</b> 주가 &gt; 적정주가 <b>AND</b> RSI 70 이상(과열)일 때 분할 매도 시작</p>
-          </div>
-        </div>
+input::placeholder { color: var(--text-faint); }
+input:focus { outline: none; border-color: var(--accent); }
 
-        <hr class="help-divider">
+#tickerInput {
+  width: 84px;
+  text-transform: uppercase;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+#fairValueInput { width: 96px; font-family: 'JetBrains Mono', monospace; }
 
-        <div class="help-section help-section-green">
-          <h4 class="help-section-title help-section-title-green">📌 추천 기준 2. [추세적 접근] 주요 이동평균선 결합</h4>
-          <p class="help-section-desc">거대 자금들이 가장 중요하게 보는 기준선인 120일 이평선(6개월 평균)과 200일 이평선(1년 평균)을 기준으로 삼는 방법입니다.</p>
-          <div class="help-rulebox help-rulebox-green">
-            <span class="help-badge">🛒 매매 규칙</span>
-            <p class="help-rule"><b class="text-buy">• 분할 매수:</b> 주가 &lt; 적정주가 아래에 있고, <b>120일 이평선</b> 근처까지 내려왔을 때 1차 매수</p>
-            <p class="help-rule"><b class="text-buy">• 풀매수:</b> 주가 &lt; 적정주가 아래에 있고, 강력한 지지선인 <b>200일 이평선</b> 터치 또는 하회 시 기계적 풀매수</p>
-            <p class="help-rule"><b class="text-sell">• 매도 시점:</b> 주가 &gt; 적정주가 위에 있으면서, <b>5일 또는 20일 이평선</b>을 아래로 깨고 내려갈 때 익절</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+button {
+  padding: 10px 13px; /* 터치 타깃 확대 */
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  transition: filter 0.15s, transform 0.1s;
+}
+button:active { transform: scale(0.96); }
 
-  <script src="app.js"></script>
-</body>
-</html>
+#addStockBtn { background-color: var(--accent); }
+#addStockBtn:hover { filter: brightness(1.1); }
+#editSelectedBtn { background-color: var(--amber); color: #1a1300; }
+#editSelectedBtn:hover { filter: brightness(1.1); }
+#deleteSelectedBtn { background-color: var(--red); }
+#deleteSelectedBtn:hover { filter: brightness(1.1); }
+#refreshBtn { background-color: var(--green); color: #06231a; margin-left: auto; }
+#refreshBtn:hover { filter: brightness(1.1); }
+#helpBtn { background-color: var(--surface-2); border: 1px solid var(--border-strong); color: var(--text-dim); padding: 10px 13px; }
+#helpBtn:hover { color: var(--text); }
+
+/* --- 리스트 상단 툴바 --- */
+.list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 2px 10px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.select-all-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.list-count {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-faint);
+}
+
+/* --- 섹션 제목(보유/관심) --- */
+.board-section-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dim);
+  margin: 18px 2px 8px;
+}
+.board-section-title:first-of-type { margin-top: 4px; }
+
+/* --- 위젯 타일 그리드 --- */
+.section-wrap {
+  transition: box-shadow 0.15s;
+  border-radius: 14px;
+}
+
+.section-wrap.section-drop-target {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.tile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.stock-tile {
+  background-color: #1e1e1e;
+  border-radius: 14px;
+  padding: 12px 14px 14px;
+  font-family: 'Inter', sans-serif;
+  transition: opacity 0.15s, transform 0.15s, background-color 0.2s;
+}
+
+.stock-tile.dragging { opacity: 0.4; transform: scale(0.97); }
+.stock-tile.drag-over { box-shadow: 0 0 0 2px var(--accent); }
+
+.stock-tile.tile-buyzone { background-color: #4a3b1a; }
+.stock-tile.tile-rsi-high { background-color: #4a1a1a; }
+.stock-tile.tile-rsi-low { background-color: #163045; }
+.stock-tile.tile-sma-zone { background-color: #163a2a; }
+
+.tile-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.row-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+
+.drag-icon {
+  font-size: 16px;
+  color: var(--text-faint);
+  cursor: grab;
+  padding: 4px; /* 터치 타깃 확보 */
+  touch-action: none; /* 드래그 중 브라우저 기본 스크롤 제스처와 충돌 방지 */
+  user-select: none;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.drag-icon:active { cursor: grabbing; color: var(--text); }
+
+.tile-ticker {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.tile-price {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 8px 0 8px;
+  line-height: 1.25;
+}
+
+.current-price-val { font-weight: 700; color: var(--text); }
+.price-change-percent { font-size: 11px; display: block; line-height: 1.4; font-weight: 600; margin-top: 2px; }
+.change-up { color: var(--red); }
+.change-down { color: var(--accent); }
+.change-flat { color: var(--text-faint); }
+
+.tile-meta {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.meta-row > span:first-child {
+  color: var(--text-faint);
+}
+
+.meta-row > span:last-child,
+.meta-row .edit-fair-input {
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.edit-fair-input {
+  width: 60px;
+  text-align: right;
+  padding: 0;
+  border: none;
+  border-bottom: 1px dashed transparent;
+  border-radius: 0;
+  background-color: transparent;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.edit-fair-input:not(:disabled) {
+  border-bottom: 1px dashed var(--amber);
+}
+
+.board-empty {
+  grid-column: 1 / -1;
+  padding: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+
+/* --- 도움말 모달 --- */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  background-color: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(3px);
+}
+
+.modal-content {
+  background-color: var(--surface);
+  margin: 12% auto;
+  padding: 20px;
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  width: 88%;
+  max-width: 480px;
+  max-height: 78vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  position: relative;
+}
+
+.modal-content h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  margin-top: 0;
+}
+
+.close-btn {
+  color: var(--text-dim);
+  position: absolute;
+  top: 8px; right: 12px;
+  font-size: 24px; font-weight: bold;
+  cursor: pointer;
+  padding: 4px 8px; /* 터치 타깃 확대 */
+}
+.close-btn:hover { color: var(--text); }
+
+.help-body { font-size: 12px; line-height: 1.6; color: #c9cdd6; margin-top: 8px; }
+
+.help-section { border-left: 3px solid; padding-left: 10px; margin-bottom: 20px; }
+.help-section-blue { border-color: var(--accent); }
+.help-section-green { border-color: var(--green); margin-bottom: 25px; }
+
+.help-section-title { margin: 0 0 8px 0; font-family: 'Space Grotesk', sans-serif; }
+.help-section-title-blue { color: #7fb2ff; }
+.help-section-title-green { color: #6ee7bf; }
+
+.help-section-desc { margin: 0 0 8px 0; color: var(--text-dim); }
+
+.help-quote {
+  margin: 5px 0;
+  padding: 6px 10px;
+  background: var(--surface-2);
+  border-radius: 8px;
+  font-size: 11px;
+  color: #b8bdc9;
+}
+
+.help-rulebox { margin-top: 8px; padding: 10px; border-radius: 10px; }
+.help-rulebox-blue { background: #142033; }
+.help-rulebox-green { background: #10261e; }
+
+.help-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  background: var(--green);
+  color: #06231a;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+.help-rule { margin: 4px 0; }
+.text-buy { color: var(--green); }
+.text-full-buy { color: var(--accent); }
+.text-sell { color: var(--red); }
+
+.help-divider { border: 0; border-top: 1px dashed var(--border-strong); margin: 20px 0; }
