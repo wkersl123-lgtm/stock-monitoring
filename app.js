@@ -307,8 +307,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const cache = domCache[ticker];
     if (!cache) return;
 
-    // 타일 전체 배경색은 아래 우선순위로 하나만 적용: 저평가 > RSI과열 > RSI과매도 > 200일선 이탈 > 평범
-    let isBuyZone = false, isRsiHigh = false, isRsiLow = false, isSmaZone = false;
+    // 타일 배경색은 현재가 vs 적정가(저평가 여부)로만 결정 - RSI/200일선은 글자색으로만 표시
+    let isBuyZone = false;
 
     const chartUrl = `${WORKER_BASE_URL}/chart?ticker=${encodeURIComponent(ticker)}&_=${Date.now()}`;
 
@@ -371,16 +371,17 @@ document.addEventListener('DOMContentLoaded', () => {
           if (prices.length > 0) prices[prices.length - 1] = currentPrice;
         }
 
-        // RSI 계산 및 툴팁
+        // RSI 계산 및 툴팁 (글자 색으로만 표시, 타일 배경엔 영향 없음)
         if (prices.length > 14) {
           const rsiValue = calculateRSI(prices, 14);
           cache.rsi.innerText = rsiValue.toFixed(2);
+          cache.rsi.classList.remove('text-rsi-high', 'text-rsi-low');
 
           if (rsiValue <= 30) {
-            isRsiLow = true;
+            cache.rsi.classList.add('text-rsi-low');
             cache.rsi.title = "RSI가 30 이하입니다! 침체 구간 (과매도 매수 신호)";
           } else if (rsiValue >= 70) {
-            isRsiHigh = true;
+            cache.rsi.classList.add('text-rsi-high');
             cache.rsi.title = "RSI가 70 이상입니다! 과열 구간 (과매수 경계 신호)";
           } else {
             cache.rsi.title = "안정적인 중간 흐름 구간입니다.";
@@ -390,13 +391,14 @@ document.addEventListener('DOMContentLoaded', () => {
           cache.rsi.title = "RSI 계산 데이터가 부족합니다.";
         }
 
-        // 200일선 계산 및 툴팁
+        // 200일선 계산 및 툴팁 (글자 색으로만 표시, 타일 배경엔 영향 없음)
         if (prices.length >= 200) {
           const sma200 = calculateSMA(prices, 200);
           cache.sma.innerText = `$${sma200.toFixed(2)}`;
+          cache.sma.classList.remove('text-sma-zone');
 
           if (currentPrice && currentPrice <= sma200) {
-            isSmaZone = true;
+            cache.sma.classList.add('text-sma-zone');
             cache.sma.title = "현재가가 200일 이동평균선 이하입니다! (장기 매수구간)";
           } else {
             cache.sma.title = "현재가가 200일선 위에 있습니다.";
@@ -407,12 +409,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      // 타일 전체 배경 상태 반영 (우선순위: 저평가 > RSI과열 > RSI과매도 > 200일선 이탈 > 평범)
-      cache.row.classList.remove('tile-buyzone', 'tile-rsi-high', 'tile-rsi-low', 'tile-sma-zone');
+      // 타일 전체 배경은 현재가/적정가 비교(저평가 여부)로만 결정
+      cache.row.classList.remove('tile-buyzone');
       if (isBuyZone) cache.row.classList.add('tile-buyzone');
-      else if (isRsiHigh) cache.row.classList.add('tile-rsi-high');
-      else if (isRsiLow) cache.row.classList.add('tile-rsi-low');
-      else if (isSmaZone) cache.row.classList.add('tile-sma-zone');
 
       // 2) 실적발표일 (Worker가 crumb 인증까지 처리한 결과를 받음)
       await fetchEarningsFromWorker(ticker, cache);
