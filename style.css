@@ -173,9 +173,11 @@ button:active { transform: scale(0.96); }
 .stock-tile.drag-over { box-shadow: 0 0 0 2px var(--accent); }
 
 .stock-tile.tile-buyzone { background-color: #4a3b1a; }
-.stock-tile.tile-rsi-high { background-color: #4a1a1a; }
-.stock-tile.tile-rsi-low { background-color: #163045; }
-.stock-tile.tile-sma-zone { background-color: #163a2a; }
+
+/* RSI/200일선 조건은 타일 배경이 아니라 해당 값 글자 색으로만 표시 */
+.tile-meta .cell-rsi.text-rsi-high { color: var(--red); font-weight: 700; }
+.tile-meta .cell-rsi.text-rsi-low { color: var(--accent); font-weight: 700; }
+.tile-meta .cell-sma.text-sma-zone { color: var(--green); font-weight: 700; }
 
 .tile-top {
   display: flex;
