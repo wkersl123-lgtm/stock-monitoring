@@ -172,12 +172,14 @@ button:active { transform: scale(0.96); }
 .stock-tile.dragging { opacity: 0.4; transform: scale(0.97); }
 .stock-tile.drag-over { box-shadow: 0 0 0 2px var(--accent); }
 
-.stock-tile.tile-buyzone { background-color: #4a3b1a; }
+.stock-tile.tile-buyzone { background-color: #163a2a; }
 
-/* RSI/200일선 조건은 타일 배경이 아니라 해당 값 글자 색으로만 표시 */
-.tile-meta .cell-rsi.text-rsi-high { color: var(--red); font-weight: 700; }
-.tile-meta .cell-rsi.text-rsi-low { color: var(--accent); font-weight: 700; }
-.tile-meta .cell-sma.text-sma-zone { color: var(--green); font-weight: 700; }
+/* RSI/200일선 조건은 타일 배경이 아니라 해당 값 글자 색으로만 표시.
+   네 가지 상태(저평가/RSI과열/RSI과매도/200일선이탈)를 서로 다른 색상 계열로 분리해서
+   한눈에 구분되도록 함: 초록(저평가, 타일) / 빨강(과열) / 하늘색(과매도) / 호박색(200일선) */
+.tile-meta .cell-rsi.text-rsi-high { color: #ff5c5c; font-weight: 700; }
+.tile-meta .cell-rsi.text-rsi-low { color: #38bdf8; font-weight: 700; }
+.tile-meta .cell-sma.text-sma-zone { color: #ffc94d; font-weight: 700; }
 
 .tile-top {
   display: flex;
