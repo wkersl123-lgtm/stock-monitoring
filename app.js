@@ -7,10 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     tickerInput: document.getElementById('tickerInput'),
     fairValueInput: document.getElementById('fairValueInput'),
     addStockBtn: document.getElementById('addStockBtn'),
-    editSelectedBtn: document.getElementById('editSelectedBtn'),
-    deleteSelectedBtn: document.getElementById('deleteSelectedBtn'),
     refreshBtn: document.getElementById('refreshBtn'),
-    selectAllCheckbox: document.getElementById('selectAllCheckbox'),
     holdingsBody: document.getElementById('holdingsBody'),
     watchBody: document.getElementById('watchBody'),
     holdingsWrap: document.getElementById('holdingsWrap'),
@@ -58,53 +55,8 @@ document.addEventListener('DOMContentLoaded', () => {
     saveStocks(() => {
       el.tickerInput.value = '';
       el.fairValueInput.value = '';
-      if (el.selectAllCheckbox) el.selectAllCheckbox.checked = false;
       renderTable();
     });
-  });
-
-  // 3. 전체 선택/해제 체크박스 이벤트
-  if (el.selectAllCheckbox) {
-    el.selectAllCheckbox.addEventListener('change', (e) => {
-      document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = e.target.checked);
-    });
-  }
-
-  // 4. 선택 삭제 버튼 이벤트
-  el.deleteSelectedBtn.addEventListener('click', () => {
-    const rowCheckboxes = document.querySelectorAll('.row-checkbox');
-    const indicesToRemove = [];
-
-    rowCheckboxes.forEach(cb => {
-      if (cb.checked) indicesToRemove.push(parseInt(cb.getAttribute('data-index')));
-    });
-
-    if (indicesToRemove.length === 0) return alert('삭제할 주식을 선택해주세요.');
-
-    if (confirm(`선택한 ${indicesToRemove.length}개의 주식을 삭제하시겠습니까?`)) {
-      indicesToRemove.sort((a, b) => b - a).forEach(idx => stocks.splice(idx, 1));
-      saveStocks(() => {
-        if (el.selectAllCheckbox) el.selectAllCheckbox.checked = false;
-        renderTable();
-      });
-    }
-  });
-
-  // 5. 선택 수정 버튼 이벤트
-  el.editSelectedBtn.addEventListener('click', () => {
-    let editCount = 0;
-    document.querySelectorAll('.row-checkbox').forEach(cb => {
-      if (cb.checked) {
-        const idx = cb.getAttribute('data-index');
-        const input = document.querySelector(`.edit-fair-input[data-index="${idx}"]`);
-        if (input) {
-          input.disabled = false;
-          editCount++;
-        }
-      }
-    });
-
-    if (editCount === 0) alert('수정할 주식의 체크박스를 선택한 후 [수정]을 눌러주세요.');
   });
 
   // 6. 수동 갱신 버튼 이벤트
@@ -264,8 +216,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
       row.innerHTML = `
         <div class="tile-top">
-          <input type="checkbox" class="row-checkbox" data-index="${index}">
           <span class="drag-icon" data-index="${index}" aria-label="순서 변경(드래그)">⠿</span>
+          <div class="tile-actions">
+            <button type="button" class="tile-edit-btn" data-index="${index}" aria-label="적정가 수정">✏️</button>
+            <button type="button" class="tile-delete-btn" data-index="${index}" aria-label="삭제">🗑</button>
+          </div>
         </div>
         <div class="tile-ticker">${stock.ticker}</div>
         <div class="tile-price cell-price">로딩중</div>
@@ -279,6 +234,24 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
       `;
+
+      row.querySelector('.tile-edit-btn').addEventListener('click', () => {
+        const input = row.querySelector('.edit-fair-input');
+        if (input.disabled) {
+          input.disabled = false;
+          input.focus();
+          input.select();
+        } else {
+          input.blur(); // blur 핸들러가 저장 처리
+        }
+      });
+
+      row.querySelector('.tile-delete-btn').addEventListener('click', () => {
+        if (confirm(`${stock.ticker}을(를) 삭제하시겠습니까?`)) {
+          stocks.splice(index, 1);
+          saveStocks(() => renderTable());
+        }
+      });
 
       domCache[stock.ticker] = {
         row: row,
@@ -478,9 +451,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const year = earnDate.getFullYear();
         const month = String(earnDate.getMonth() + 1).padStart(2, '0');
         const day = String(earnDate.getDate()).padStart(2, '0');
+        const fullDateStr = `${year}-${month}-${day}`;
 
-        cache.earnings.innerText = `${year}-${month}-${day}`;
-        cache.earnings.title = '';
+        // D-day 카운트다운 계산 (자정 기준 날짜 차이만 비교)
+        const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const earnMid = new Date(earnDate.getFullYear(), earnDate.getMonth(), earnDate.getDate());
+        const diffDays = Math.round((earnMid - todayMid) / (1000 * 60 * 60 * 24));
+        const dDayText = diffDays <= 0 ? 'D-DAY' : `D-${diffDays}`;
+
+        cache.earnings.innerText = dDayText;
+        cache.earnings.title = `실적발표 예정일: ${fullDateStr}`;
         return;
       }
 
@@ -490,14 +470,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return fetchEarningsFromWorker(ticker, cache, true);
       }
 
-      // 재시도까지 실패한 경우: 이미 정상 날짜가 표시되어 있었다면 그대로 유지 (깜빡임/후퇴 방지)
-      const alreadyValid = /^\d{4}-\d{2}-\d{2}$/.test(cache.earnings.innerText);
+      // 재시도까지 실패한 경우: 이미 정상 값이 표시되어 있었다면 그대로 유지 (깜빡임/후퇴 방지)
+      const alreadyValid = /^D-(DAY|\d+)$/.test(cache.earnings.innerText);
       if (!alreadyValid) {
         cache.earnings.innerText = '미정';
         cache.earnings.title = 'Worker에서 실적발표일 데이터를 가져오지 못했습니다.';
       }
     } catch (e) {
-      const alreadyValid = /^\d{4}-\d{2}-\d{2}$/.test(cache.earnings.innerText);
+      const alreadyValid = /^D-(DAY|\d+)$/.test(cache.earnings.innerText);
       if (!alreadyValid) {
         cache.earnings.innerText = '미정';
         cache.earnings.title = 'Worker 연결에 실패했습니다.';
