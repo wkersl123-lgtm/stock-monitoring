@@ -172,7 +172,11 @@ button:active { transform: scale(0.96); }
 .stock-tile.dragging { opacity: 0.4; transform: scale(0.97); }
 .stock-tile.drag-over { box-shadow: 0 0 0 2px var(--accent); }
 
-.stock-tile.tile-buyzone { background-color: #163a2a; }
+/* 저평가 + RSI 과매도 + 200일선 이탈이 "동시에 전부" 충족될 때만 타일 배경을 강조 */
+.stock-tile.tile-triple-signal {
+  background-color: #113a2e;
+  box-shadow: 0 0 0 1.5px #34d399;
+}
 
 /* RSI/200일선 조건은 타일 배경이 아니라 해당 값 글자 색으로만 표시.
    네 가지 상태(저평가/RSI과열/RSI과매도/200일선이탈)를 서로 다른 색상 계열로 분리해서
@@ -201,6 +205,9 @@ button:active { transform: scale(0.96); }
   line-height: 1;
   cursor: pointer;
   opacity: 0.75;
+  color: var(--text-faint);
+  display: inline-flex;
+  align-items: center;
 }
 .tile-edit-btn:active, .tile-delete-btn:active { opacity: 1; transform: scale(0.9); }
 
@@ -275,6 +282,11 @@ button:active { transform: scale(0.96); }
 
 .edit-fair-input:not(:disabled) {
   border-bottom: 1px dashed var(--amber);
+}
+
+.edit-fair-input.text-buy-zone {
+  color: var(--green) !important;
+  font-weight: 700;
 }
 
 .board-empty {
