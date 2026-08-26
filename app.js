@@ -218,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="tile-top">
           <span class="drag-icon" data-index="${index}" aria-label="순서 변경(드래그)">⠿</span>
           <div class="tile-actions">
-            <button type="button" class="tile-edit-btn" data-index="${index}" aria-label="적정가 수정">✏️</button>
+            <button type="button" class="tile-edit-btn" data-index="${index}" aria-label="적정가 수정"><svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12.9 3.6l3.5 3.5-9.6 9.6-4 .9.9-4z"/></svg></button>
             <button type="button" class="tile-delete-btn" data-index="${index}" aria-label="삭제">🗑</button>
           </div>
         </div>
@@ -258,7 +258,8 @@ document.addEventListener('DOMContentLoaded', () => {
         price: row.querySelector('.cell-price'),
         rsi: row.querySelector('.cell-rsi'),
         sma: row.querySelector('.cell-sma'),
-        earnings: row.querySelector('.cell-earnings')
+        earnings: row.querySelector('.cell-earnings'),
+        fairInput: row.querySelector('.edit-fair-input')
       };
 
       (isHolding ? holdingsFragment : watchFragment).appendChild(row);
@@ -307,8 +308,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const cache = domCache[ticker];
     if (!cache) return;
 
-    // 타일 배경색은 현재가 vs 적정가(저평가 여부)로만 결정 - RSI/200일선은 글자색으로만 표시
-    let isBuyZone = false;
+    // 타일 배경색: 저평가 / RSI 과열·과매도 / 200일선 이탈 조건을 종합해서 결정 (우선순위 적용)
+    let isBuyZone = false, isRsiHigh = false, isRsiLow = false, isSmaZone = false;
 
     const chartUrl = `${WORKER_BASE_URL}/chart?ticker=${encodeURIComponent(ticker)}&_=${Date.now()}`;
 
@@ -367,20 +368,23 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
               cache.price.title = "현재가가 적정가와 일치합니다.";
             }
+            if (cache.fairInput) cache.fairInput.classList.toggle('text-buy-zone', isBuyZone);
           }
           if (prices.length > 0) prices[prices.length - 1] = currentPrice;
         }
 
-        // RSI 계산 및 툴팁 (글자 색으로만 표시, 타일 배경엔 영향 없음)
+        // RSI 계산 및 툴팁 (글자 색 + 타일 배경 둘 다에 반영)
         if (prices.length > 14) {
           const rsiValue = calculateRSI(prices, 14);
           cache.rsi.innerText = rsiValue.toFixed(2);
           cache.rsi.classList.remove('text-rsi-high', 'text-rsi-low');
 
           if (rsiValue <= 30) {
+            isRsiLow = true;
             cache.rsi.classList.add('text-rsi-low');
             cache.rsi.title = "RSI가 30 이하입니다! 침체 구간 (과매도 매수 신호)";
           } else if (rsiValue >= 70) {
+            isRsiHigh = true;
             cache.rsi.classList.add('text-rsi-high');
             cache.rsi.title = "RSI가 70 이상입니다! 과열 구간 (과매수 경계 신호)";
           } else {
@@ -391,13 +395,14 @@ document.addEventListener('DOMContentLoaded', () => {
           cache.rsi.title = "RSI 계산 데이터가 부족합니다.";
         }
 
-        // 200일선 계산 및 툴팁 (글자 색으로만 표시, 타일 배경엔 영향 없음)
+        // 200일선 계산 및 툴팁 (글자 색 + 타일 배경 둘 다에 반영)
         if (prices.length >= 200) {
           const sma200 = calculateSMA(prices, 200);
           cache.sma.innerText = `$${sma200.toFixed(2)}`;
           cache.sma.classList.remove('text-sma-zone');
 
           if (currentPrice && currentPrice <= sma200) {
+            isSmaZone = true;
             cache.sma.classList.add('text-sma-zone');
             cache.sma.title = "현재가가 200일 이동평균선 이하입니다! (장기 매수구간)";
           } else {
@@ -409,9 +414,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      // 타일 전체 배경은 현재가/적정가 비교(저평가 여부)로만 결정
-      cache.row.classList.remove('tile-buyzone');
-      if (isBuyZone) cache.row.classList.add('tile-buyzone');
+      // 타일 전체 배경: 저평가 + RSI 과매도(30 이하) + 200일선 이탈이 동시에 전부 충족될 때만 강조
+      const isTripleSignal = isBuyZone && isRsiLow && isSmaZone;
+      cache.row.classList.toggle('tile-triple-signal', isTripleSignal);
 
       // 2) 실적발표일 (Worker가 crumb 인증까지 처리한 결과를 받음)
       await fetchEarningsFromWorker(ticker, cache);
