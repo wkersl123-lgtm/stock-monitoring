@@ -374,26 +374,22 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         const prices = rawCloses.filter(p => p !== null);
         const meta = result.meta;
-        const currentPrice = meta.regularMarketPrice;
-        const timestamps = result.timestamp || [];
+        const currentPrice = meta.regularMarketPrice; // 장중엔 실시간가, 장마감 후엔 종가로 야후가 자동 전환
 
-        // 전일 종가: 일봉 배열에서 "오늘 날짜가 아닌 것 중 가장 최근" 종가를 직접 찾음.
-        // meta.chartPreviousClose는 "차트 조회 구간(1년) 시작 이전 종가"라 전혀 다른 값이라 쓰면 안 되고,
-        // meta.previousClose가 없을 때를 대비한 안전한 대체 방법.
-        let previousClose = null;
-        if (timestamps.length && meta.regularMarketTime) {
-          const todayStr = new Date(meta.regularMarketTime * 1000).toISOString().slice(0, 10);
-          for (let i = timestamps.length - 1; i >= 0; i--) {
-            if (rawCloses[i] === null) continue;
-            const barDateStr = new Date(timestamps[i] * 1000).toISOString().slice(0, 10);
-            if (barDateStr !== todayStr) {
-              previousClose = rawCloses[i];
-              break;
-            }
-          }
-        }
+        // 전일 종가: null을 걸러낸 종가 배열에서 "가장 최근(오늘) 바로 앞" 값을 그대로 사용.
+        // 날짜 문자열을 비교해서 "오늘 봉"을 가려내던 방식은 타임존 경계에서 미묘하게 어긋날 수 있어 제거함.
+        let previousClose = prices.length > 1 ? prices[prices.length - 2] : null;
         if (previousClose === null) {
           previousClose = meta.previousClose || null;
+        }
+
+        // 안전장치: 계산될 등락률이 비정상적으로 크면(하루 만에 ±20%를 넘는 급등락은 극히 드묾)
+        // 데이터가 잘못 짝지어졌다고 보고 meta.previousClose로 다시 시도
+        if (previousClose && currentPrice) {
+          const testChangePercent = Math.abs((currentPrice - previousClose) / previousClose) * 100;
+          if (testChangePercent > 20 && meta.previousClose && meta.previousClose !== previousClose) {
+            previousClose = meta.previousClose;
+          }
         }
 
         // 현재가 렌더링
