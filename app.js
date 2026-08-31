@@ -2,6 +2,10 @@
 // 예: https://stock-monitor-proxy.your-subdomain.workers.dev
 const WORKER_BASE_URL = 'https://stock-monitoring.wkersl123.workers.dev';
 
+// ⚠️ Worker에 등록한 SYNC_SECRET과 반드시 똑같은 값으로 맞춰주세요.
+// (PWA와 크롬 확장프로그램 코드 양쪽 다 이 값이 일치해야 서로 동기화됩니다)
+const SYNC_KEY = 'YOUR-OWN-SECRET-PASSPHRASE';
+
 document.addEventListener('DOMContentLoaded', () => {
   const el = {
     tickerInput: document.getElementById('tickerInput'),
@@ -22,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let updateTimer = null;
   const domCache = {};
 
-  // --- 저장소: chrome.storage.local → localStorage ---
+  // --- 로컬 저장소: localStorage (오프라인에서도 즉시 로딩되는 캐시 역할) ---
   const STORAGE_KEY = 'stocks';
   function loadStocks() {
     try {
@@ -34,14 +38,56 @@ document.addEventListener('DOMContentLoaded', () => {
       return [];
     }
   }
-  function saveStocks(callback) {
+  function saveLocalOnly() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stocks));
+  }
+  function saveStocks(callback) {
+    saveLocalOnly();
     if (callback) callback();
+    syncPush(); // 서버(Worker)에도 반영해서 다른 기기와 동기화
   }
 
-  // 1. 저장된 주식 데이터 로드
+  // --- 서버 동기화: Cloudflare Worker + KV를 거쳐 PWA/확장프로그램이 같은 목록을 공유 ---
+  async function syncPull() {
+    try {
+      const res = await fetch(`${WORKER_BASE_URL}/sync`, {
+        headers: { 'X-Sync-Key': SYNC_KEY },
+        cache: 'no-store'
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return Array.isArray(data.stocks) ? data.stocks : null; // null = 서버에 아직 저장된 게 없음
+    } catch (e) {
+      return null; // 오프라인이거나 Worker 연결 실패 - 로컬 데이터로 계속 진행
+    }
+  }
+
+  async function syncPush() {
+    try {
+      await fetch(`${WORKER_BASE_URL}/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Sync-Key': SYNC_KEY },
+        body: JSON.stringify({ stocks })
+      });
+    } catch (e) {
+      // 오프라인이면 무시 - 로컬엔 이미 저장돼 있고, 다음 저장 시점에 다시 시도됨
+    }
+  }
+
+  // 1. 저장된 주식 데이터 로드: 로컬 캐시로 먼저 빠르게 그린 뒤, 서버 최신본으로 갱신
   stocks = loadStocks();
   if (stocks.length > 0) renderTable();
+
+  syncPull().then((serverStocks) => {
+    if (serverStocks) {
+      stocks = serverStocks.map(s => ({ category: 'watch', ...s }));
+      saveLocalOnly(); // 서버 → 로컬 캐시만 갱신 (다시 서버로 밀어올리지 않음)
+      renderTable();
+    } else if (stocks.length > 0) {
+      // 서버에 아직 데이터가 없는데(첫 사용) 로컬엔 있는 경우 - 서버에 최초 업로드
+      syncPush();
+    }
+  });
 
   // 2. 주식 추가 이벤트
   el.addStockBtn.addEventListener('click', () => {
@@ -330,16 +376,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const meta = result.meta;
         const currentPrice = meta.regularMarketPrice;
 
-        let previousClose = null;
-        if (rawCloses.length > 0) {
-          const marketStillOpenToday = rawCloses[rawCloses.length - 1] === null;
-          previousClose = marketStillOpenToday
-            ? (prices.length > 0 ? prices[prices.length - 1] : null)
-            : (prices.length > 1 ? prices[prices.length - 2] : null);
-        }
-        if (previousClose === null) {
-          previousClose = meta.previousClose || meta.chartPreviousClose || null;
-        }
+        // 전일 종가는 야후가 별도로 제공하는 meta 필드를 그대로 신뢰 (장중/장마감 여부를
+        // 배열에서 추측하던 예전 방식은 간헐적으로 틀린 날짜를 짚는 문제가 있어 제거함)
+        const previousClose = meta.previousClose || meta.chartPreviousClose || null;
 
         // 현재가 렌더링
         if (currentPrice) {
