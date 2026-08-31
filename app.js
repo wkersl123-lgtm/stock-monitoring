@@ -375,10 +375,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const prices = rawCloses.filter(p => p !== null);
         const meta = result.meta;
         const currentPrice = meta.regularMarketPrice;
+        const timestamps = result.timestamp || [];
 
-        // 전일 종가는 야후가 별도로 제공하는 meta 필드를 그대로 신뢰 (장중/장마감 여부를
-        // 배열에서 추측하던 예전 방식은 간헐적으로 틀린 날짜를 짚는 문제가 있어 제거함)
-        const previousClose = meta.previousClose || meta.chartPreviousClose || null;
+        // 전일 종가: 일봉 배열에서 "오늘 날짜가 아닌 것 중 가장 최근" 종가를 직접 찾음.
+        // meta.chartPreviousClose는 "차트 조회 구간(1년) 시작 이전 종가"라 전혀 다른 값이라 쓰면 안 되고,
+        // meta.previousClose가 없을 때를 대비한 안전한 대체 방법.
+        let previousClose = null;
+        if (timestamps.length && meta.regularMarketTime) {
+          const todayStr = new Date(meta.regularMarketTime * 1000).toISOString().slice(0, 10);
+          for (let i = timestamps.length - 1; i >= 0; i--) {
+            if (rawCloses[i] === null) continue;
+            const barDateStr = new Date(timestamps[i] * 1000).toISOString().slice(0, 10);
+            if (barDateStr !== todayStr) {
+              previousClose = rawCloses[i];
+              break;
+            }
+          }
+        }
+        if (previousClose === null) {
+          previousClose = meta.previousClose || null;
+        }
 
         // 현재가 렌더링
         if (currentPrice) {
