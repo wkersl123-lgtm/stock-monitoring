@@ -167,7 +167,10 @@ button:active { transform: scale(0.96); }
   padding: 12px 14px 14px;
   font-family: 'Inter', sans-serif;
   transition: opacity 0.15s, transform 0.15s, background-color 0.2s;
+  cursor: pointer;
 }
+
+.stock-tile:active { transform: scale(0.98); }
 
 .stock-tile.dragging { opacity: 0.4; transform: scale(0.97); }
 .stock-tile.drag-over { box-shadow: 0 0 0 2px var(--accent); }
@@ -339,6 +342,41 @@ button:active { transform: scale(0.96); }
 .close-btn:hover { color: var(--text); }
 
 .help-body { font-size: 12px; line-height: 1.6; color: #c9cdd6; margin-top: 8px; }
+
+/* --- 직전 분기 실적 모달 --- */
+.earnings-modal-body { font-size: 13px; margin-top: 10px; }
+
+.earnings-date {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-dim);
+  margin: 0 0 14px;
+}
+
+.earnings-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.earnings-row:first-of-type { border-top: none; }
+
+.earnings-label {
+  font-size: 11px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.earnings-value {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text);
+}
+
+.earnings-empty {
+  color: var(--text-dim);
+  font-size: 13px;
+}
 
 .help-section { border-left: 3px solid; padding-left: 10px; margin-bottom: 20px; }
 .help-section-blue { border-color: var(--accent); }
