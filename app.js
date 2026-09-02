@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       Promise.all(stocks.map((stock, i) =>
         new Promise((resolve) => {
-          setTimeout(() => fetchYahooData(stock.ticker).finally(resolve), i * 400);
+          setTimeout(() => fetchYahooData(stock.ticker).finally(resolve), i * 500);
         })
       )).then(() => {
         el.refreshBtn.innerText = '갱신';
@@ -427,7 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 종목이 많을 때 한꺼번에 요청이 몰려 rate limit에 걸리지 않도록 살짝 시간차를 두고 순차 발사
   function fetchAllStaggered() {
     stocks.forEach((stock, i) => {
-      setTimeout(() => fetchYahooData(stock.ticker), i * 400);
+      setTimeout(() => fetchYahooData(stock.ticker), i * 500);
     });
   }
 
@@ -442,7 +442,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const chartUrl = `${WORKER_BASE_URL}/chart?ticker=${encodeURIComponent(ticker)}&_=${Date.now()}`;
 
     try {
-      // 1) 차트 / 지표 데이터 수집
+      // 1) 시세 데이터 수집 (Finnhub quote+candle 기반 - 현재가/등락률/RSI·200일선용 종가)
       let response = await fetch(chartUrl, { cache: 'no-store' });
       if (response.status === 429) {
         // 요청이 몰려서 막힌 경우 - 1초 대기 후 한 번만 재시도
@@ -450,74 +450,58 @@ document.addEventListener('DOMContentLoaded', () => {
         response = await fetch(chartUrl, { cache: 'no-store' });
       }
       const contentType = response.headers.get('content-type') || '';
-      if (!response.ok || !contentType.includes('application/json')) {
+      if (!contentType.includes('application/json')) {
         throw new Error(`차트 응답 이상 (status ${response.status})`);
       }
       const data = await response.json();
 
-      const result = data?.chart?.result?.[0];
-      const rawCloses = result?.indicators?.quote?.[0]?.close;
-
-      if (!result || !rawCloses) {
-        cache.price.innerText = '오류';
-        cache.rsi.innerText = '-'; cache.rsi.title = '';
-        cache.sma.innerText = '-'; cache.sma.title = '';
+      if (!response.ok || typeof data.price !== 'number') {
+        // 일시적인 실패일 수 있으니, 이미 정상 가격이 표시되어 있었다면 그대로 유지 (깜빡임/후퇴 방지)
+        const alreadyHasPrice = cache.price.querySelector('.current-price-val') !== null;
+        if (!alreadyHasPrice) {
+          cache.price.innerText = '오류';
+          cache.rsi.innerText = '-'; cache.rsi.title = '';
+          cache.sma.innerText = '-'; cache.sma.title = '';
+        }
       } else {
-        const prices = rawCloses.filter(p => p !== null);
-        const meta = result.meta;
-        const currentPrice = meta.regularMarketPrice; // 장중엔 실시간가, 장마감 후엔 종가로 야후가 자동 전환
+        const currentPrice = data.price;
+        // 등락률은 Finnhub이 이미 정확하게 계산해서 줌 (직접 전일 종가를 찾아 계산하던 로직이
+        // 통째로 필요 없어짐 - 그동안 반복됐던 등락률 오차 버그의 근본 원인이었음)
+        const changePercent = typeof data.changePercent === 'number' ? data.changePercent : null;
 
-        // 전일 종가: null을 걸러낸 종가 배열에서 "가장 최근(오늘) 바로 앞" 값을 그대로 사용.
-        // 날짜 문자열을 비교해서 "오늘 봉"을 가려내던 방식은 타임존 경계에서 미묘하게 어긋날 수 있어 제거함.
-        let previousClose = prices.length > 1 ? prices[prices.length - 2] : null;
-        if (previousClose === null) {
-          previousClose = meta.previousClose || null;
+        let changeHtml = '';
+        if (changePercent !== null) {
+          const isUp = changePercent > 0;
+          const isDown = changePercent < 0;
+          const changeClass = isUp ? 'change-up' : (isDown ? 'change-down' : 'change-flat');
+          const changeSign = isUp ? '▲' : (isDown ? '▼' : '');
+          changeHtml = `<br><span class="price-change-percent ${changeClass}">${changeSign}${Math.abs(changePercent).toFixed(2)}%</span>`;
+        } else {
+          changeHtml = `<br><span class="price-change-percent change-flat">-%</span>`;
         }
 
-        // 안전장치: 계산될 등락률이 비정상적으로 크면(하루 만에 ±20%를 넘는 급등락은 극히 드묾)
-        // 데이터가 잘못 짝지어졌다고 보고 meta.previousClose로 다시 시도
-        if (previousClose && currentPrice) {
-          const testChangePercent = Math.abs((currentPrice - previousClose) / previousClose) * 100;
-          if (testChangePercent > 20 && meta.previousClose && meta.previousClose !== previousClose) {
-            previousClose = meta.previousClose;
-          }
-        }
+        cache.price.innerHTML = `<span class="current-price-val">$${currentPrice.toFixed(2)}</span>${changeHtml}`;
 
-        // 현재가 렌더링
-        if (currentPrice) {
-          let changeHtml = '';
-          if (previousClose) {
-            const changePercent = ((currentPrice - previousClose) / previousClose) * 100;
-            const isUp = changePercent > 0;
-            const isDown = changePercent < 0;
-            const changeClass = isUp ? 'change-up' : (isDown ? 'change-down' : 'change-flat');
-            const changeSign = isUp ? '▲' : (isDown ? '▼' : '');
-
-            changeHtml = `<br><span class="price-change-percent ${changeClass}">${changeSign}${Math.abs(changePercent).toFixed(2)}%</span>`;
+        const targetStock = stocks.find(s => s.ticker === ticker);
+        if (targetStock) {
+          if (currentPrice < targetStock.fairValue) {
+            isBuyZone = true;
+            cache.price.title = `현재가가 적정가($${targetStock.fairValue.toFixed(2)})보다 낮습니다! (저평가 구간)`;
+          } else if (currentPrice > targetStock.fairValue) {
+            cache.price.title = `현재가가 적정가($${targetStock.fairValue.toFixed(2)})보다 높습니다.`;
           } else {
-            changeHtml = `<br><span class="price-change-percent change-flat">-%</span>`;
+            cache.price.title = "현재가가 적정가와 일치합니다.";
           }
-
-          cache.price.innerHTML = `<span class="current-price-val">$${currentPrice.toFixed(2)}</span>${changeHtml}`;
-
-          const targetStock = stocks.find(s => s.ticker === ticker);
-          if (targetStock) {
-            if (currentPrice < targetStock.fairValue) {
-              isBuyZone = true;
-              cache.price.title = `현재가가 적정가($${targetStock.fairValue.toFixed(2)})보다 낮습니다! (저평가 구간)`;
-            } else if (currentPrice > targetStock.fairValue) {
-              cache.price.title = `현재가가 적정가($${targetStock.fairValue.toFixed(2)})보다 높습니다.`;
-            } else {
-              cache.price.title = "현재가가 적정가와 일치합니다.";
-            }
-            if (cache.fairInput) cache.fairInput.classList.toggle('text-buy-zone', isBuyZone);
-          }
-          if (prices.length > 0) prices[prices.length - 1] = currentPrice;
+          if (cache.fairInput) cache.fairInput.classList.toggle('text-buy-zone', isBuyZone);
         }
+
+        // RSI(14)/200일선은 일별 종가(closes)가 있어야 계산 가능 - 무료 API 특성상 못 받아올 수도 있음
+        const closes = Array.isArray(data.closes) ? data.closes.filter(c => c !== null) : [];
+        if (closes.length > 0) closes[closes.length - 1] = currentPrice; // 마지막 값은 실시간가로 교체
 
         // RSI 계산 및 툴팁 (글자 색 + 타일 배경 둘 다에 반영)
-        if (prices.length > 14) {
-          const rsiValue = calculateRSI(prices, 14);
+        if (closes.length > 14) {
+          const rsiValue = calculateRSI(closes, 14);
           cache.rsi.innerText = rsiValue.toFixed(2);
           cache.rsi.classList.remove('text-rsi-high', 'text-rsi-low');
 
@@ -538,8 +522,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // 200일선 계산 및 툴팁 (글자 색 + 타일 배경 둘 다에 반영)
-        if (prices.length >= 200) {
-          const sma200 = calculateSMA(prices, 200);
+        if (closes.length >= 200) {
+          const sma200 = calculateSMA(closes, 200);
           cache.sma.innerText = `$${sma200.toFixed(2)}`;
           cache.sma.classList.remove('text-sma-zone');
 
@@ -551,8 +535,10 @@ document.addEventListener('DOMContentLoaded', () => {
             cache.sma.title = "현재가가 200일선 위에 있습니다.";
           }
         } else {
-          cache.sma.innerText = `부족 (${prices.length}/200)`;
-          cache.sma.title = "200일선 계산을 위한 과거 일수가 부족합니다.";
+          cache.sma.innerText = closes.length > 0 ? `부족 (${closes.length}/200)` : '제공안함';
+          cache.sma.title = closes.length > 0
+            ? "200일선 계산을 위한 과거 일수가 부족합니다."
+            : "이 API 등급에서는 일별 시세 데이터를 제공하지 않습니다.";
         }
       }
 
