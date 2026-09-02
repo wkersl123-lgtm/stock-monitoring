@@ -339,7 +339,10 @@ document.addEventListener('DOMContentLoaded', () => {
             <button type="button" class="tile-delete-btn" data-index="${index}" aria-label="삭제">🗑</button>
           </div>
         </div>
-        <div class="tile-ticker">${stock.ticker}</div>
+        <div class="tile-ticker">
+          <img class="tile-logo" alt="" />
+          <span>${stock.ticker}</span>
+        </div>
         <div class="tile-price cell-price">로딩중</div>
         <div class="tile-meta">
           <div class="meta-row"><span>RSI</span><span class="cell-rsi">-</span></div>
@@ -375,6 +378,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.closest('.drag-icon, .tile-edit-btn, .tile-delete-btn, .edit-fair-input')) return;
         openEarningsModal(stock.ticker);
       });
+
+      fetchLogo(stock.ticker, row.querySelector('.tile-logo'));
 
       domCache[stock.ticker] = {
         row: row,
@@ -432,6 +437,31 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // 8. 데이터 패치 함수 (Cloudflare Worker 프록시 경유)
+  // 회사 로고 (세션 내 메모리 캐시 - 리렌더링될 때마다 다시 불러오지 않도록)
+  const logoCache = {};
+  async function fetchLogo(ticker, imgEl) {
+    if (!imgEl) return;
+    if (ticker in logoCache) {
+      if (logoCache[ticker]) {
+        imgEl.src = logoCache[ticker];
+        imgEl.style.display = 'inline-block';
+      }
+      return;
+    }
+    try {
+      const res = await fetch(`${WORKER_BASE_URL}/logo?ticker=${encodeURIComponent(ticker)}`, { cache: 'no-store' });
+      const data = await res.json();
+      logoCache[ticker] = data?.logo || null;
+      if (logoCache[ticker]) {
+        imgEl.src = logoCache[ticker];
+        imgEl.style.display = 'inline-block';
+        imgEl.onerror = () => { imgEl.style.display = 'none'; };
+      }
+    } catch (e) {
+      logoCache[ticker] = null;
+    }
+  }
+
   async function fetchYahooData(ticker) {
     const cache = domCache[ticker];
     if (!cache) return;
