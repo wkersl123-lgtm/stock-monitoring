@@ -175,6 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const revBeat = (typeof revEst === 'number' && typeof revAct === 'number') ? revAct - revEst : null;
     const revClass = revBeat === null ? '' : (revBeat >= 0 ? 'text-buy' : 'text-sell');
+    const hasRevenue = typeof revEst === 'number' || typeof revAct === 'number';
 
     el.earningsModalBody.innerHTML = `
       <p class="earnings-date">발표일: ${last.date}</p>
@@ -186,6 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ${epsBeatPct !== null ? `<span class="${epsClass}">(${epsBeatPct >= 0 ? '+' : ''}${epsBeatPct.toFixed(1)}%)</span>` : ''}
         </span>
       </div>
+      ${hasRevenue ? `
       <div class="earnings-row">
         <span class="earnings-label">매출</span>
         <span class="earnings-value">
@@ -193,6 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
           → 실제 <b class="${revClass}">${formatRevenue(revAct)}</b>
         </span>
       </div>
+      ` : `<p class="earnings-empty">매출 데이터는 무료 API 특성상 제공되지 않아요.</p>`}
     `;
     el.earningsModal.style.display = 'block';
   }
