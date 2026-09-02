@@ -19,7 +19,11 @@ document.addEventListener('DOMContentLoaded', () => {
     boardsWrapper: document.getElementById('boardsWrapper'),
     helpBtn: document.getElementById('helpBtn'),
     helpModal: document.getElementById('helpModal'),
-    closeBtn: document.querySelector('.close-btn')
+    closeBtn: document.querySelector('.close-btn'),
+    earningsModal: document.getElementById('earningsModal'),
+    earningsCloseBtn: document.getElementById('earningsCloseBtn'),
+    earningsModalTicker: document.getElementById('earningsModalTicker'),
+    earningsModalBody: document.getElementById('earningsModalBody')
   };
 
   let stocks = [];
@@ -112,11 +116,14 @@ document.addEventListener('DOMContentLoaded', () => {
       el.refreshBtn.innerText = '갱신중...';
       el.refreshBtn.disabled = true;
 
-      Promise.all(stocks.map(stock => fetchYahooData(stock.ticker)))
-        .then(() => {
-          el.refreshBtn.innerText = '갱신';
-          el.refreshBtn.disabled = false;
-        });
+      Promise.all(stocks.map((stock, i) =>
+        new Promise((resolve) => {
+          setTimeout(() => fetchYahooData(stock.ticker).finally(resolve), i * 150);
+        })
+      )).then(() => {
+        el.refreshBtn.innerText = '갱신';
+        el.refreshBtn.disabled = false;
+      });
     });
   }
 
@@ -127,6 +134,67 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('click', (e) => {
       if (e.target === el.helpModal) el.helpModal.style.display = 'none';
     });
+  }
+
+  // 6-2-2. 직전 분기 실적 모달 제어 이벤트
+  if (el.earningsModal && el.earningsCloseBtn) {
+    el.earningsCloseBtn.addEventListener('click', () => { el.earningsModal.style.display = 'none'; });
+    window.addEventListener('click', (e) => {
+      if (e.target === el.earningsModal) el.earningsModal.style.display = 'none';
+    });
+  }
+
+  function formatRevenue(n) {
+    if (n === null || n === undefined) return '-';
+    if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+    if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
+    return `$${n.toLocaleString()}`;
+  }
+
+  function openEarningsModal(ticker) {
+    if (!el.earningsModal) return;
+    const cache = domCache[ticker];
+    const last = cache && cache.lastEarnings;
+
+    el.earningsModalTicker.innerText = `${ticker} · 직전 분기 실적`;
+
+    if (!last) {
+      el.earningsModalBody.innerHTML = `<p class="earnings-empty">아직 직전 분기 실적 데이터를 불러오지 못했어요. 갱신 후 다시 눌러주세요.</p>`;
+      el.earningsModal.style.display = 'block';
+      return;
+    }
+
+    const epsEst = last.epsEstimate;
+    const epsAct = last.epsActual;
+    const revEst = last.revenueEstimate;
+    const revAct = last.revenueActual;
+
+    const epsBeat = (typeof epsEst === 'number' && typeof epsAct === 'number') ? epsAct - epsEst : null;
+    const epsBeatPct = (epsBeat !== null && epsEst) ? (epsBeat / Math.abs(epsEst)) * 100 : null;
+    const epsClass = epsBeat === null ? '' : (epsBeat >= 0 ? 'text-buy' : 'text-sell');
+
+    const revBeat = (typeof revEst === 'number' && typeof revAct === 'number') ? revAct - revEst : null;
+    const revClass = revBeat === null ? '' : (revBeat >= 0 ? 'text-buy' : 'text-sell');
+
+    el.earningsModalBody.innerHTML = `
+      <p class="earnings-date">발표일: ${last.date}</p>
+      <div class="earnings-row">
+        <span class="earnings-label">EPS</span>
+        <span class="earnings-value">
+          예상 ${typeof epsEst === 'number' ? '$' + epsEst.toFixed(2) : '-'}
+          → 실제 <b class="${epsClass}">${typeof epsAct === 'number' ? '$' + epsAct.toFixed(2) : '-'}</b>
+          ${epsBeatPct !== null ? `<span class="${epsClass}">(${epsBeatPct >= 0 ? '+' : ''}${epsBeatPct.toFixed(1)}%)</span>` : ''}
+        </span>
+      </div>
+      <div class="earnings-row">
+        <span class="earnings-label">매출</span>
+        <span class="earnings-value">
+          예상 ${formatRevenue(revEst)}
+          → 실제 <b class="${revClass}">${formatRevenue(revAct)}</b>
+        </span>
+      </div>
+    `;
+    el.earningsModal.style.display = 'block';
   }
 
   // 6-3. 터치/마우스 드래그로 순서 변경 + 섹션(보유/관심) 간 자유로운 이동 (Pointer Events -
@@ -299,6 +367,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
 
+      // 타일 탭/클릭 시 직전 분기 실적 모달 오픈 (드래그 손잡이/수정/삭제/입력창 클릭은 제외)
+      row.addEventListener('click', (e) => {
+        if (e.target.closest('.drag-icon, .tile-edit-btn, .tile-delete-btn, .edit-fair-input')) return;
+        openEarningsModal(stock.ticker);
+      });
+
       domCache[stock.ticker] = {
         row: row,
         price: row.querySelector('.cell-price'),
@@ -343,10 +417,15 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    stocks.forEach(stock => fetchYahooData(stock.ticker));
-    updateTimer = setInterval(() => {
-      stocks.forEach(stock => fetchYahooData(stock.ticker));
-    }, 60 * 1000);
+    fetchAllStaggered();
+    updateTimer = setInterval(fetchAllStaggered, 60 * 1000);
+  }
+
+  // 종목이 많을 때 한꺼번에 요청이 몰려 rate limit에 걸리지 않도록 살짝 시간차를 두고 순차 발사
+  function fetchAllStaggered() {
+    stocks.forEach((stock, i) => {
+      setTimeout(() => fetchYahooData(stock.ticker), i * 150);
+    });
   }
 
   // 8. 데이터 패치 함수 (Cloudflare Worker 프록시 경유)
@@ -362,6 +441,10 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       // 1) 차트 / 지표 데이터 수집
       const response = await fetch(chartUrl, { cache: 'no-store' });
+      const contentType = response.headers.get('content-type') || '';
+      if (!response.ok || !contentType.includes('application/json')) {
+        throw new Error(`차트 응답 이상 (status ${response.status})`);
+      }
       const data = await response.json();
 
       const result = data?.chart?.result?.[0];
@@ -489,6 +572,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch(`${WORKER_BASE_URL}/earnings?ticker=${encodeURIComponent(ticker)}&_=${Date.now()}`, { cache: 'no-store' });
       const data = await res.json();
       const timestamp = typeof data?.timestamp === 'number' ? data.timestamp : null;
+
+      // 직전 분기 실적(EPS/매출 예상 vs 실제)은 타일 탭 시 보여줄 용도로 캐시에 저장
+      if (data?.last) cache.lastEarnings = data.last;
 
       if (timestamp) {
         let earnDate = new Date(timestamp * 1000);
