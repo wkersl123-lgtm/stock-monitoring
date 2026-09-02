@@ -231,6 +231,18 @@ button:active { transform: scale(0.96); }
   font-weight: 700;
   font-size: 15px;
   color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tile-logo {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: contain;
+  background: #ffffff;
+  display: none; /* 로고를 성공적으로 불러온 뒤에만 표시 */
 }
 
 .tile-price {
