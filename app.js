@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       Promise.all(stocks.map((stock, i) =>
         new Promise((resolve) => {
-          setTimeout(() => fetchYahooData(stock.ticker).finally(resolve), i * 150);
+          setTimeout(() => fetchYahooData(stock.ticker).finally(resolve), i * 400);
         })
       )).then(() => {
         el.refreshBtn.innerText = '갱신';
@@ -424,7 +424,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 종목이 많을 때 한꺼번에 요청이 몰려 rate limit에 걸리지 않도록 살짝 시간차를 두고 순차 발사
   function fetchAllStaggered() {
     stocks.forEach((stock, i) => {
-      setTimeout(() => fetchYahooData(stock.ticker), i * 150);
+      setTimeout(() => fetchYahooData(stock.ticker), i * 400);
     });
   }
 
@@ -440,7 +440,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       // 1) 차트 / 지표 데이터 수집
-      const response = await fetch(chartUrl, { cache: 'no-store' });
+      let response = await fetch(chartUrl, { cache: 'no-store' });
+      if (response.status === 429) {
+        // 요청이 몰려서 막힌 경우 - 1초 대기 후 한 번만 재시도
+        await new Promise(r => setTimeout(r, 1000));
+        response = await fetch(chartUrl, { cache: 'no-store' });
+      }
       const contentType = response.headers.get('content-type') || '';
       if (!response.ok || !contentType.includes('application/json')) {
         throw new Error(`차트 응답 이상 (status ${response.status})`);
