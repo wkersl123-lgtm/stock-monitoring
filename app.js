@@ -4,7 +4,7 @@ const WORKER_BASE_URL = 'https://stock-monitoring.wkersl123.workers.dev';
 
 // ⚠️ Worker에 등록한 SYNC_SECRET과 반드시 똑같은 값으로 맞춰주세요.
 // (PWA와 크롬 확장프로그램 코드 양쪽 다 이 값이 일치해야 서로 동기화됩니다)
-const SYNC_KEY = 'YOUR-OWN-SECRET-PASSPHRASE';
+const SYNC_KEY = 'nobady0402';
 
 document.addEventListener('DOMContentLoaded', () => {
   const el = {
